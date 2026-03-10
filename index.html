@@ -317,6 +317,7 @@ const INIT={trains:DEFAULT_TRAINS,events:[],calEvents:[],cfg:INIT_CFG,year:2026,
 
 function reducer(state,{type,payload}){
   switch(type){
+    case 'RESET_EVENTS': return{...state,events:[],selectedId:null};
     case 'SET_EVENTS':    return{...state,events:payload,selectedId:null};
     case 'UPSERT_EVENT':{const i=state.events.findIndex(e=>e.id===payload.id);return{...state,events:i>=0?state.events.map(e=>e.id===payload.id?payload:e):[...state.events,payload],selectedId:payload.id};}
     case 'DELETE_EVENT':  return{...state,events:state.events.filter(e=>e.id!==payload),selectedId:null};
@@ -1157,6 +1158,7 @@ function TopBar({state,dispatch,years,onSave,onAddEvent,onPrint}){
       <button onClick={()=>dispatch({type:'SET_THEME',payload:state.theme==='dark'?'light':'dark'})} style={{...btn,padding:'5px 8px',fontSize:'0.85rem'}} title="Toggle theme">
         {state.theme==='dark'?'☀️':'🌙'}
       </button>
+      <button onClick={()=>{if(window.confirm('Clear all PI events? Calendar events and settings are kept.'))dispatch({type:'RESET_EVENTS'});}} style={{...btn,color:T.red,borderColor:`${T.red}50`,background:`${T.red}10`}} title="Clear all PI events">🗑 Reset</button>
       <button onClick={onSave} style={{...btn,color:T.green,borderColor:`${T.green}50`,background:`${T.green}10`}}>💾 Save</button>
     </div>
   );
