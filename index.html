@@ -723,7 +723,22 @@ function GridHalf({half, year, allEvents, calEvents, trains, selectedId, onSelec
           </button>
         ))}
       </div>
-      <div style={{width:totalW,minWidth:totalW}}>
+      <div style={{width:totalW,minWidth:totalW,position:'relative'}}>
+        {(()=>{
+          const today=toISO(new Date());
+          const wi=weekColIdx(today,weeks);
+          const wMon=weeks[wi];
+          if(!wMon) return null;
+          const dayOff=Math.max(0,Math.min(6,diffDays(toISO(wMon),today)));
+          const x=LABEL_W+wi*WEEK_W+Math.round(dayOff/7*WEEK_W);
+          const inView=today>=toISO(viewStart)&&today<=toISO(viewEnd);
+          if(!inView) return null;
+          return(
+            <div style={{position:'absolute',left:x,top:0,bottom:0,width:2,background:T.red,opacity:.7,zIndex:10,pointerEvents:'none'}}>
+              <div style={{position:'sticky',top:0,background:T.red,color:'#fff',fontSize:'0.48rem',fontWeight:'700',padding:'1px 3px',borderRadius:'0 2px 2px 0',whiteSpace:'nowrap',lineHeight:1.4}}>TODAY</div>
+            </div>
+          );
+        })()}
         <GridHeader weeks={weeks} totalW={totalW} isLight={isLight}/>
         <GridCalEventsRow calEvents={calEvents} viewStart={viewStart} viewEnd={viewEnd} weeks={weeks} totalW={totalW}/>
         {piGroups.map(({key,events:pe})=>{
