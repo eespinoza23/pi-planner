@@ -280,10 +280,12 @@ function generateFitToYear(trains, year, cfg){
     const i3=rA.evts.find(e=>e.type==='iter'&&e.label==='3');
     if(i3) all.push({id:uid(),trainId:'both',type:'hack',pi:`Q${q.pi}`,label:'Hackathon',start:i3.start,end:toISO(addBizDays(fromISO(i3.start),4))});
   }
-  // Zone Hors PI at end of year (freeze period)
+  // Zone Hors PI at end of year (freeze period — may extend into Jan next year)
   const freezeStart=`${year}-${freezeDate}`;
+  const freezeEndDate = cfg.freezeEndDate || '01-07';
+  const freezeEnd = freezeEndDate==='12-31' ? `${year}-12-31` : `${year+1}-${freezeEndDate}`;
   trains.forEach(t=>{
-    all.push({id:uid(),trainId:t.id,type:'hors',pi:'Q4',label:'Zone Hors PI (Freeze)',start:freezeStart,end:`${year}-12-31`});
+    all.push({id:uid(),trainId:t.id,type:'hors',pi:'Q4',label:'Zone Hors PI (Freeze)',start:freezeStart,end:freezeEnd});
   });
   return all;
 }
@@ -291,7 +293,7 @@ function generateFitToYear(trains, year, cfg){
 // ── STATE ─────────────────────────────────────────────────────────────────────
 const INIT_CFG={
   startDate:'2026-01-06', numPIs:4, ppGapDays:7, ppOrder:'A_first',
-  itersPerPI:5, autoFitStart:'2026-01-06', freezeDate:'12-15',
+  itersPerPI:5, autoFitStart:'2026-01-06', freezeDate:'12-15', freezeEndDate:'01-07',
 };
 const INIT={trains:DEFAULT_TRAINS,events:[],calEvents:[],cfg:INIT_CFG,year:2026,selectedId:null,collapsed:{},settingsOpen:false,calPanelOpen:false,viewMode:'grid',theme:'dark'};
 
@@ -992,7 +994,12 @@ function SettingsModal({trains,cfg,year,onTrainsChange,onCfgChange,onGenerate,on
               <label style={lbl}>Year-end freeze start (Zone Hors PI)</label>
               <input type="text" placeholder="12-15" value={cfg.freezeDate||'12-15'} onChange={e=>onCfgChange({freezeDate:e.target.value})} style={fld}/>
               <div style={{fontSize:'0.62rem',color:T.text2,marginTop:-6,marginBottom:4}}>
-                Format: MM-DD (e.g. 12-15 for Dec 15). Zone runs until Dec 31.
+                Format: MM-DD (e.g. 12-15 for Dec 15).
+              </div>
+              <label style={lbl}>Year-end freeze end (in January next year)</label>
+              <input type="text" placeholder="01-07" value={cfg.freezeEndDate||'01-07'} onChange={e=>onCfgChange({freezeEndDate:e.target.value})} style={fld}/>
+              <div style={{fontSize:'0.62rem',color:T.text2,marginTop:-6,marginBottom:4}}>
+                Format: MM-DD (e.g. 01-07 for Jan 7 of next year, or 12-31 to stay in current year).
               </div>
             </div>
           )}
