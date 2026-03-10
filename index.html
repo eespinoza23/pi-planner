@@ -222,70 +222,88 @@ function generateAll(trains, cfg){
 }
 
 // Auto-fit: align PIs to calendar quarters, auto-calculate iterations
-// Returns {evts, end} where end is the actual last day of IP (may spill past qEndISO)
-function genPIForQuarter(piNum, trainId, qStartISO, qEndISO, cfg={}){
-  const {year=2026} = cfg;
-  const qStart=fromISO(qStartISO), qEnd=fromISO(qEndISO);
-  const ps=nextTuesday(qStart), pe=addDays(ps,1), pk=`Q${piNum}`;
-  const piLabel=`PI ${year}.${piNum}`;
-  const evts=[{id:uid(),trainId,type:'pp',pi:pk,label:`${piLabel} PI Planning`,start:toISO(ps),end:toISO(pe)}];
-  let is=addBizDays(pe,1);
-  const biz=countBizDays(is,qEnd);
-  const slots=Math.floor(biz/10);
-  const reg=Math.max(1,slots-1); // last slot always IP
-  for(let i=1;i<=reg;i++){
-    const ie=addBizDays(is,9);
-    evts.push({id:uid(),trainId,type:'iter',pi:pk,label:String(i),start:toISO(is),end:toISO(ie)});
-    is=addBizDays(ie,1);
-  }
-  // IP runs its full 10 biz days even if it spills past the quarter end
-  const ipEnd=addBizDays(is,9);
-  evts.push({id:uid(),trainId,type:'innov',pi:pk,label:`${piLabel} Innovation`,start:toISO(is),end:toISO(ipEnd)});
-  return {evts, end:toISO(ipEnd)};
-}
-
+// Auto-fit: generate all PI events for the year matching the Excel cadence:
+//   PI N: [PP 1wk Mon-Sun] → [Iters 1-N, 2wk each] → [PI N+1 PP 1wk] → [PI N Innovation 1wk] → [PI N+1 Iter 1]
+//   Last PI: [PP 1wk] → [Iters 1-N, 2wk each] → Zone Hors PI (no Innovation)
 function generateFitToYear(trains, year, cfg){
-  const {ppOrder='A_first', ppGapDays=7, autoFitStart='', freezeDate='12-15'} = cfg;
+  const {ppOrder='A_first', ppGapDays=7, autoFitStart='', freezeDate='12-15', freezeEndDate='01-07', itersPerPI=5} = cfg;
   const [first,second] = ppOrder==='B_first' ? [trains[1]||trains[0],trains[0]] : [trains[0],trains[1]];
-  const q1Start = autoFitStart || `${year}-01-01`;
-  // Calendar quarter boundaries (end dates are only used to compute iteration count within the quarter)
-  const quarters=[
-    {pi:1, calStart:q1Start,              end:`${year}-03-31`},
-    {pi:2, calStart:`${year}-04-01`,      end:`${year}-06-30`},
-    {pi:3, calStart:`${year}-07-01`,      end:`${year}-09-30`},
-    {pi:4, calStart:`${year}-10-01`,      end:`${year}-${freezeDate}`},
-  ];
+  const numPIs=4;
+  // Helpers: week-based arithmetic (all dates are ISO strings, weeks start Monday)
+  const addWks=(iso,n)=>toISO(addDays(fromISO(iso),n*7));
+  const nextMon=(iso)=>{ const d=fromISO(iso),w=d.getDay(); return w===1?iso:toISO(addDays(d,w===0?1:8-w)); };
+
   const all=[];
-  // Zone Hors PI at start (Jan 1 → day before Q1 start)
+  const q1Start=autoFitStart||`${year}-01-01`;
+
+  // Zone Hors PI buffer (Jan 1 → day before first PI Planning)
   if(autoFitStart && autoFitStart > `${year}-01-01`){
     trains.forEach(t=>{
-      all.push({id:uid(),trainId:t.id,type:'hors',pi:'Q1',label:'Zone Hors PI (Buffer)',start:`${year}-01-01`,end:toISO(addDays(fromISO(autoFitStart),-1))});
+      all.push({id:uid(),trainId:t.id,type:'hors',pi:'Q1',label:'Zone Hors PI (Buffer)',
+                start:`${year}-01-01`,end:toISO(addDays(fromISO(autoFitStart),-1))});
     });
   }
-  // Rolling start dates per train — PI events may spill past quarter boundary
-  let nextA=q1Start, nextB=q1Start;
-  for(const q of quarters){
-    // Each train starts at the later of: calendar quarter start or day after previous PI ended
-    const startA = nextA > q.calStart ? nextA : q.calStart;
-    // Train B starts ppGapDays calendar days after train A's PI start
-    const startB_calendar = toISO(addDays(fromISO(startA), ppGapDays));
-    const startB = second ? (nextB > startB_calendar ? nextB : startB_calendar) : startA;
-    const rA=genPIForQuarter(q.pi,first.id,startA,q.end,{year});
-    const rB=second?genPIForQuarter(q.pi,second.id,startB,q.end,{year}):null;
-    all.push(...rA.evts);
-    if(rB) all.push(...rB.evts);
-    // Advance rolling starts to day after each train's IP ends
-    nextA=toISO(addDays(fromISO(rA.end),1));
-    nextB=rB?toISO(addDays(fromISO(rB.end),1)):nextA;
-    const i3=rA.evts.find(e=>e.type==='iter'&&e.label==='3');
-    if(i3) all.push({id:uid(),trainId:'both',type:'hack',pi:`Q${q.pi}`,label:'Hackathon',start:i3.start,end:toISO(addBizDays(fromISO(i3.start),4))});
-  }
-  // Zone Hors PI at end of year (freeze period — may extend into Jan next year)
+
+  // Train start Mondays: B starts ppGapDays after A, snapped to next Monday
+  const startA=nextMon(q1Start);
+  const startB=second ? nextMon(toISO(addDays(fromISO(startA),ppGapDays))) : startA;
+
+  // Generate linear event sequence for one train
+  const genTrain=(train,trainStart)=>{
+    const evts=[];
+    const iters=Math.max(1,itersPerPI||5);
+    let ppMon=trainStart; // Monday of current PI's PP week
+
+    for(let piNum=1; piNum<=numPIs; piNum++){
+      const pk=`Q${piNum}`;
+      const piLabel=`PI ${year}.${piNum}`;
+
+      // PI Planning: 1 week (Mon–Sun)
+      evts.push({id:uid(),trainId:train.id,type:'pp',pi:pk,
+                 label:`${piLabel} PI Planning`,
+                 start:ppMon, end:toISO(addDays(fromISO(ppMon),6))});
+
+      // Iterations: 2 weeks each
+      // PI 1: first iter starts the very next week after PP (ppMon+7)
+      // PI 2+: first iter starts 2 weeks after PP (ppMon+14), because the Innovation
+      //        of the previous PI occupies the week immediately after PP
+      let cur=addWks(ppMon, piNum===1 ? 1 : 2);
+      for(let i=1; i<=iters; i++){
+        evts.push({id:uid(),trainId:train.id,type:'iter',pi:pk,label:String(i),
+                   start:cur, end:toISO(addDays(fromISO(cur),13))});
+        cur=addWks(cur,2);
+      }
+
+      if(piNum<numPIs){
+        // cur is now the Monday right after the last iteration (= next PI's PP start)
+        ppMon=cur; // will be used at top of next loop iteration
+        // Innovation of current PI: 1 week after next PP
+        const innovStart=addWks(cur,1);
+        evts.push({id:uid(),trainId:train.id,type:'innov',pi:pk,
+                   label:`${piLabel} Innovation`,
+                   start:innovStart, end:toISO(addDays(fromISO(innovStart),6))});
+        // Next PI's Iter 1 will start at cur+14 (ppMon+14), handled automatically:
+        // next loop: piNum>1 → cur = addWks(ppMon, 2) = ppMon+14 ✓
+      }
+      // Last PI: no Innovation generated — Zone Hors PI follows immediately
+    }
+    return evts;
+  };
+
+  all.push(...genTrain(first,startA));
+  if(second) all.push(...genTrain(second,startB));
+
+  // Hackathon: at PI Q2 Iter 1 of the first train (matches Excel placement)
+  const hackEvt=all.find(e=>e.trainId===first.id&&e.pi==='Q2'&&e.type==='iter'&&e.label==='1');
+  if(hackEvt) all.push({id:uid(),trainId:'both',type:'hack',pi:'Q2',label:'Hackathon',
+                        start:hackEvt.start,end:toISO(addBizDays(fromISO(hackEvt.start),4))});
+
+  // Zone Hors PI freeze (may extend into January next year)
   const freezeStart=`${year}-${freezeDate}`;
-  const freezeEndDate = cfg.freezeEndDate || '01-07';
-  const freezeEnd = freezeEndDate==='12-31' ? `${year}-12-31` : `${year+1}-${freezeEndDate}`;
+  const freezeEnd=(freezeEndDate||'01-07')==='12-31'?`${year}-12-31`:`${year+1}-${freezeEndDate||'01-07'}`;
   trains.forEach(t=>{
-    all.push({id:uid(),trainId:t.id,type:'hors',pi:'Q4',label:'Zone Hors PI (Freeze)',start:freezeStart,end:freezeEnd});
+    all.push({id:uid(),trainId:t.id,type:'hors',pi:'Q4',label:'Zone Hors PI (Freeze)',
+              start:freezeStart,end:freezeEnd});
   });
   return all;
 }
