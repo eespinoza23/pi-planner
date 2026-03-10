@@ -614,21 +614,34 @@ function GridCalEventsRow({calEvents, viewStart, viewEnd, weeks, totalW}){
   );
 }
 
-function GridTrainRow({train, events, weeks, totalW, selectedId, onSelect, onLaneClick}){
+function GridTrainRow({train, events, weeks, totalW, selectedId, onSelect, onLaneClick, drag, onDragStart, dragMovedRef}){
   const T=useT();
   const [hov,setHov]=useState(null);
   const trainEvts=events.filter(e=>e.trainId===train.id&&e.type!=='hack');
+  const isMyDrag=drag?.evt.trainId===train.id;
+  // Ghost drop-target overlay
+  const ghost=isMyDrag&&drag.hoverWeekIdx!=null?(()=>{
+    const tc=TYPE_CFG[drag.evt.type]||TYPE_CFG.iter;
+    const color=tc.color||(train?.color||'#388BFD');
+    const durW=Math.max(1,Math.round(drag.durationDays/7));
+    const hw=Math.max(0,Math.min(weeks.length-1,drag.hoverWeekIdx));
+    return(
+      <div style={{position:'absolute',left:LABEL_W+hw*WEEK_W+1,top:4,
+        width:Math.max(WEEK_W-2,durW*WEEK_W-2),height:ROW_H-8,
+        background:`${color}25`,border:`2px dashed ${color}`,borderRadius:'0 5px 5px 0',
+        pointerEvents:'none',zIndex:10}}/>
+    );
+  })():null;
   return(
-    <div style={{position:'relative',height:ROW_H,width:totalW,borderBottom:`1px solid ${T.border2}`,cursor:'cell'}}
-      onClick={e=>{if(e.target===e.currentTarget)onLaneClick(e,train);}}>
+    <div style={{position:'relative',height:ROW_H,width:totalW,borderBottom:`1px solid ${T.border2}`,cursor:drag?'grabbing':'cell'}}
+      onClick={e=>{if(e.target===e.currentTarget&&!drag)onLaneClick(e,train);}}>
       <div style={{position:'sticky',left:0,width:LABEL_W,height:'100%',background:T.bg,borderRight:`1px solid ${T.border}`,display:'flex',alignItems:'center',justifyContent:'flex-end',paddingRight:12,zIndex:3,fontSize:'0.68rem',fontWeight:'700',color:train.color,fontFamily:"'Space Grotesk',sans-serif"}}>
         {train.name}
       </div>
-      {/* Week grid lines */}
       {weeks.map((_,i)=>(
         <div key={i} style={{position:'absolute',left:LABEL_W+i*WEEK_W,top:0,bottom:0,width:WEEK_W,borderLeft:`1px solid ${T.border2}`,background:i%2===0?'transparent':`${T.surface2}40`}}/>
       ))}
-      {/* Events */}
+      {ghost}
       {trainEvts.map(evt=>{
         const si=weekColIdx(evt.start,weeks);
         const ei=weekColIdx(evt.end,weeks);
@@ -638,19 +651,31 @@ function GridTrainRow({train, events, weeks, totalW, selectedId, onSelect, onLan
         const color=tc.color||(train?.color||'#388BFD');
         const isSel=selectedId===evt.id;
         const isHov=hov===evt.id;
+        const isDragging=drag?.evt.id===evt.id;
         return(
           <div key={evt.id}
             title={`${evt.label} • ${fmtFull(evt.start)} → ${fmtFull(evt.end)}`}
-            onClick={e=>{e.stopPropagation();onSelect(evt.id);}}
+            onMouseDown={e=>{
+              if(e.button!==0) return;
+              e.stopPropagation(); e.preventDefault();
+              const grabX=e.clientX-e.currentTarget.getBoundingClientRect().left;
+              onDragStart(evt, Math.max(0,Math.floor(grabX/WEEK_W)), diffDays(evt.start,evt.end), si);
+            }}
+            onClick={e=>{
+              e.stopPropagation();
+              if(dragMovedRef?.current){dragMovedRef.current=false;return;}
+              onSelect(evt.id);
+            }}
             onMouseEnter={()=>setHov(evt.id)} onMouseLeave={()=>setHov(null)}
             style={{
               position:'absolute',left,top:4,width,height:ROW_H-8,
               background:isSel?`${color}40`:isHov?`${color}30`:`${color}22`,
               border:`1px solid ${color}${isSel?'80':'45'}`,borderLeft:`3px solid ${color}`,
               borderRadius:'0 5px 5px 0',display:'flex',flexDirection:'column',justifyContent:'center',
-              paddingLeft:7,paddingRight:5,cursor:'pointer',overflow:'hidden',userSelect:'none',
-              boxShadow:isSel?`0 0 0 2px ${color}50`:'none',zIndex:isSel?4:isHov?3:2,
-              transition:'background .1s',
+              paddingLeft:7,paddingRight:5,cursor:drag?'grabbing':'grab',overflow:'hidden',userSelect:'none',
+              boxShadow:isSel?`0 0 0 2px ${color}50`:'none',zIndex:isDragging?1:isSel?4:isHov?3:2,
+              opacity:isDragging?0.35:1,
+              transition:isDragging?'none':'background .1s',
             }}>
             <span style={{fontSize:'0.64rem',fontWeight:'700',color,whiteSpace:'normal',wordBreak:'break-word',lineHeight:1.25,overflow:'hidden'}}>{evt.label}</span>
             {width>80&&<span style={{fontSize:'0.53rem',color:`${color}90`,fontFamily:"'JetBrains Mono',monospace",marginTop:1,whiteSpace:'nowrap'}}>{fmtMD(evt.start)}</span>}
@@ -694,6 +719,52 @@ function GridHalf({half, year, allEvents, calEvents, trains, selectedId, onSelec
   const totalW=LABEL_W+weeks.length*WEEK_W+2;
   const halfPIs=isH1?['Q1','Q2']:['Q3','Q4'];
   const halfEvts=useMemo(()=>allEvents.filter(e=>halfPIs.includes(e.pi)),[allEvents]);
+
+  // ── DRAG STATE ──
+  const containerRef=React.useRef(null);
+  const [drag,setDrag]=useState(null);
+  // Always-current refs so window listeners never have stale closures
+  const moveRef=React.useRef(null);
+  const commitRef=React.useRef(null);
+  const getPIForDate=React.useCallback((dateISO)=>{
+    const pp=allEvents.filter(e=>e.type==='pp').sort((a,b)=>a.start.localeCompare(b.start));
+    let pi='Q1';
+    for(const p of pp){ if(p.start<=dateISO) pi=p.pi; else break; }
+    return pi;
+  },[allEvents]);
+  moveRef.current=(e)=>{
+    if(!drag||!containerRef.current) return;
+    const rect=containerRef.current.getBoundingClientRect();
+    const x=e.clientX-rect.left+containerRef.current.scrollLeft-LABEL_W;
+    const hw=Math.max(0,Math.min(weeks.length-1,Math.floor(x/WEEK_W)-drag.weekOffset));
+    if(hw!==drag.hoverWeekIdx) setDrag(d=>d?{...d,hoverWeekIdx:hw}:null);
+  };
+  const dragMovedRef=React.useRef(false);
+  commitRef.current=()=>{
+    if(!drag) return;
+    const {evt,hoverWeekIdx,durationDays,startWeekIdx}=drag;
+    const moved=hoverWeekIdx!==startWeekIdx;
+    dragMovedRef.current=moved;
+    setDrag(null);
+    document.body.style.cursor='';
+    if(!moved) return; // no move — let onClick handle it
+    const newStart=toISO(weeks[Math.max(0,Math.min(weeks.length-1,hoverWeekIdx))]);
+    const newEnd=toISO(addDays(fromISO(newStart),durationDays));
+    dispatch({type:'UPSERT_EVENT',payload:{...evt,start:newStart,end:newEnd,pi:getPIForDate(newStart)}});
+  };
+  useEffect(()=>{
+    if(!drag){ document.body.style.cursor=''; return; }
+    document.body.style.cursor='grabbing';
+    const mv=e=>moveRef.current(e);
+    const up=()=>commitRef.current();
+    window.addEventListener('mousemove',mv);
+    window.addEventListener('mouseup',up);
+    return()=>{ window.removeEventListener('mousemove',mv); window.removeEventListener('mouseup',up); };
+  },[!!drag]);
+  const handleDragStart=useCallback((evt,weekOffset,durationDays,startWeekIdx)=>{
+    dragMovedRef.current=false;
+    setDrag({evt,weekOffset,durationDays,hoverWeekIdx:startWeekIdx,startWeekIdx});
+  },[]);
   const piGroups=useMemo(()=>{
     const g={};
     halfEvts.forEach(e=>{if(!g[e.pi])g[e.pi]=[];g[e.pi].push(e);});
@@ -711,7 +782,7 @@ function GridHalf({half, year, allEvents, calEvents, trains, selectedId, onSelec
   },[weeks,onSelect]);
 
   return(
-    <div className={className} style={{overflowX:'auto',background:T.bg}}>
+    <div ref={containerRef} className={className} style={{overflowX:'auto',background:T.bg}}>
       {/* Half header bar */}
       <div style={{padding:'7px 14px',background:T.surface,borderBottom:`1px solid ${T.border2}`,display:'flex',alignItems:'center',gap:10,minWidth:totalW,position:'sticky',left:0}}>
         <span style={{fontSize:'0.74rem',fontWeight:'700',color:T.text,fontFamily:"'Space Grotesk',sans-serif"}}>{title}</span>
@@ -758,9 +829,9 @@ function GridHalf({half, year, allEvents, calEvents, trains, selectedId, onSelec
                 <span style={{fontSize:'0.7rem',fontWeight:'700',color:piColorMap[key],fontFamily:"'Space Grotesk',sans-serif"}}>{key}</span>
                 <span style={{fontSize:'0.58rem',color:T.text3,fontWeight:'700',marginLeft:8,textTransform:'uppercase',letterSpacing:'.06em'}}>collapse ▾</span>
               </div>
-              {trains[0]&&<GridTrainRow train={trains[0]} events={piEvts} weeks={weeks} totalW={totalW} selectedId={selectedId} onSelect={onSelect} onLaneClick={(e,t)=>onLaneClick(e,t,key)}/>}
+              {trains[0]&&<GridTrainRow train={trains[0]} events={piEvts} weeks={weeks} totalW={totalW} selectedId={selectedId} onSelect={onSelect} onLaneClick={(e,t)=>onLaneClick(e,t,key)} drag={drag} onDragStart={handleDragStart} dragMovedRef={dragMovedRef}/>}
               <GridHackRow events={piEvts} weeks={weeks} totalW={totalW} selectedId={selectedId} onSelect={onSelect}/>
-              {trains[1]&&<GridTrainRow train={trains[1]} events={piEvts} weeks={weeks} totalW={totalW} selectedId={selectedId} onSelect={onSelect} onLaneClick={(e,t)=>onLaneClick(e,t,key)}/>}
+              {trains[1]&&<GridTrainRow train={trains[1]} events={piEvts} weeks={weeks} totalW={totalW} selectedId={selectedId} onSelect={onSelect} onLaneClick={(e,t)=>onLaneClick(e,t,key)} drag={drag} onDragStart={handleDragStart} dragMovedRef={dragMovedRef}/>}
             </div>
           );
         })}
