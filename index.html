@@ -1204,15 +1204,6 @@ function TopBar({state,dispatch,years,onSave,onAddEvent,onPrint,onExport}){
       ))}
       {state.events.length>0&&<div style={{background:T.surface2,border:`1px solid ${T.border}`,borderRadius:20,padding:'2px 8px',fontSize:'0.6rem',color:T.text2}}>{state.events.length}</div>}
       <div style={{flex:1}}/>
-      {/* View toggle */}
-      <div style={{display:'flex',background:T.inputBg,border:`1px solid ${T.border}`,borderRadius:7,padding:3,gap:2}}>
-        {[['grid','⊞ Grid'],['stacked','⊟ Stacked'],['timeline','↔ Timeline']].map(([v,label])=>(
-          <button key={v} onClick={()=>dispatch({type:'SET_VIEW',payload:v})}
-            style={{padding:'3px 9px',border:'none',borderRadius:5,background:state.viewMode===v?T.accent:'transparent',color:state.viewMode===v?'#fff':T.text2,fontSize:'0.68rem',fontWeight:'700',cursor:'pointer',transition:'all .15s'}}>
-            {label}
-          </button>
-        ))}
-      </div>
       <div style={{width:1,height:18,background:T.border}}/>
       <button onClick={onAddEvent} style={{...btn,color:T.accent,borderColor:`${T.accent}50`}}>+ Event</button>
       <button onClick={()=>dispatch({type:'CAL_PANEL',payload:!state.calPanelOpen})}
@@ -1318,35 +1309,18 @@ function App(){
 
         <div className="main-wrap" style={{flex:1,overflow:'hidden',display:'flex',position:'relative'}}>
           {/* ── GRID VIEW ── */}
-          {state.viewMode==='grid'&&(
-            <div className="grid-view scroll-wrap" style={{flex:1,overflowY:'auto',paddingLeft:calOpen?300:0,paddingRight:panelOpen?340:0,transition:'padding .2s ease'}}>
-              {yearEvents.length===0?emptyState:(
-                <>
-                  <GridHalf half={1} year={state.year} {...sharedProps} className="stacked-h1" isLight={state.theme==='light'}/>
-                  <div style={{height:6,background:theme.border2}}/>
-                  <GridHalf half={2} year={state.year} {...sharedProps} className="h2-section" isLight={state.theme==='light'}/>
-                  <PrintLegend trains={state.trains}/>
-                  <div className="no-print" style={{height:40}}/>
-                </>
-              )}
-            </div>
-          )}
-          {/* ── STACKED VIEW ── */}
-          {state.viewMode==='stacked'&&(
-            <div className="stacked-view scroll-wrap" style={{flex:1,overflowY:'auto',paddingLeft:calOpen?300:0,paddingRight:panelOpen?340:0,transition:'padding .2s ease'}}>
-              {yearEvents.length===0?emptyState:(
-                <>
-                  <HalfYearView half={1} year={state.year} {...sharedProps} className="stacked-h1"/>
-                  <div style={{height:6,background:theme.border2}}/>
-                  <HalfYearView half={2} year={state.year} {...sharedProps} className="h2-section"/>
-                  <PrintLegend trains={state.trains}/>
-                  <div className="no-print" style={{height:40}}/>
-                </>
-              )}
-            </div>
-          )}
-          {/* ── TIMELINE VIEW ── */}
-          {state.viewMode==='timeline'&&(
+          <div className="grid-view scroll-wrap" style={{flex:1,overflowY:'auto',paddingLeft:calOpen?300:0,paddingRight:panelOpen?340:0,transition:'padding .2s ease'}}>
+            {yearEvents.length===0?emptyState:(
+              <>
+                <GridHalf half={1} year={state.year} {...sharedProps} className="stacked-h1" isLight={state.theme==='light'}/>
+                <div style={{height:6,background:theme.border2}}/>
+                <GridHalf half={2} year={state.year} {...sharedProps} className="h2-section" isLight={state.theme==='light'}/>
+                <PrintLegend trains={state.trains}/>
+                <div className="no-print" style={{height:40}}/>
+              </>
+            )}
+          </div>
+          {false&&(
             <div className="timeline-view scroll-wrap" style={{flex:1,overflowX:'auto',overflowY:'auto',paddingLeft:calOpen?300:0,paddingRight:panelOpen?340:0,transition:'padding .2s ease'}}>
               {yearEvents.length===0?emptyState:(
                 <div style={{width:totalW,minWidth:totalW}}>
