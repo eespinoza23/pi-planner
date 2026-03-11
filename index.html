@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📅</text></svg>">
   <title>PI Cadence Planner</title>
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
@@ -34,10 +35,18 @@
     ::-webkit-scrollbar-track { background:var(--sb-track); }
     ::-webkit-scrollbar-thumb { background:var(--sb-thumb); border-radius:3px; }
     ::-webkit-scrollbar-thumb:hover { background:var(--sb-hover); }
+    body { font-variant-numeric: tabular-nums; }
     button { cursor:pointer; font-family:inherit; }
+    button:focus-visible { outline:2px solid #388BFD; outline-offset:2px; border-radius:6px; }
+    :root.light button:focus-visible { outline-color:#0969DA; }
     input, select { font-family:inherit; }
-    input[type="date"]::-webkit-calendar-picker-indicator { filter:invert(0.5); cursor:pointer; }
+    input[type="date"]::-webkit-calendar-picker-indicator { cursor:pointer; }
+    :root.light input[type="date"]::-webkit-calendar-picker-indicator { filter:invert(0.7); }
     input[type="color"] { cursor:pointer; border:none; padding:0; background:none; }
+    .scroll-wrap { scroll-behavior:smooth; scrollbar-gutter:stable; }
+    @media (prefers-reduced-motion:no-preference) {
+      ::view-transition-old(root), ::view-transition-new(root) { animation-duration:.3s; animation-timing-function:ease; }
+    }
     @keyframes slideInRight { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
     @keyframes slideInLeft  { from{transform:translateX(-100%);opacity:0} to{transform:translateX(0);opacity:1} }
     @keyframes fadeIn       { from{opacity:0} to{opacity:1} }
@@ -1190,7 +1199,7 @@ function Toast({msg,type='success',onDone}){
 }
 
 // ── TOP BAR ───────────────────────────────────────────────────────────────────
-function TopBar({state,dispatch,years,onAddEvent,onExport,onExportJSON,onImportJSON}){
+function TopBar({state,dispatch,years,onAddEvent,onExport,onExportJSON,onImportJSON,onToggleTheme}){
   const T=useT();
   const btn={padding:'5px 10px',background:T.btnBg,border:`1px solid ${T.border}`,borderRadius:7,color:T.text2,fontSize:'0.72rem',fontWeight:'600',display:'flex',alignItems:'center',gap:4};
   const calCount=state.calEvents.filter(e=>fromISO(e.start||e.date).getFullYear()===state.year).length;
@@ -1228,7 +1237,7 @@ function TopBar({state,dispatch,years,onAddEvent,onExport,onExportJSON,onImportJ
       <button onClick={onExport} style={btn} title="Export current view as PNG">↓ PNG</button>
       <div style={{width:1,height:18,background:T.border}}/>
       <button onClick={()=>dispatch({type:'SETTINGS',payload:true})} style={btn}>⚙ Config</button>
-      <button onClick={()=>dispatch({type:'SET_THEME',payload:state.theme==='dark'?'light':'dark'})} style={{...btn,padding:'5px 8px',fontSize:'0.85rem'}} title="Toggle theme">
+      <button onClick={onToggleTheme} style={{...btn,padding:'5px 8px',fontSize:'0.85rem'}} title="Toggle theme">
         {state.theme==='dark'?'☀️':'🌙'}
       </button>
     </div>
@@ -1294,6 +1303,11 @@ function App(){
     };
     input.click();
   },[dispatch]);
+  const handleToggleTheme=useCallback(()=>{
+    const next=state.theme==='dark'?'light':'dark';
+    if(!document.startViewTransition){dispatch({type:'SET_THEME',payload:next});return;}
+    document.startViewTransition(()=>{ ReactDOM.flushSync(()=>dispatch({type:'SET_THEME',payload:next})); });
+  },[state.theme,dispatch]);
   const handleExportPNG=useCallback(async()=>{
     const el=document.querySelector('.grid-view')||document.querySelector('.stacked-view')||document.querySelector('.timeline-view');
     if(!el||!window.html2canvas){setToast('Export not available');return;}
@@ -1340,7 +1354,7 @@ function App(){
   return(
     <ThemeCtx.Provider value={theme}>
       <div style={{display:'flex',flexDirection:'column',height:'100vh',overflow:'hidden',background:theme.bg}}>
-        <TopBar state={state} dispatch={dispatch} years={years} onExport={handleExportPNG} onExportJSON={handleExportJSON} onImportJSON={handleImportJSON}
+        <TopBar state={state} dispatch={dispatch} years={years} onExport={handleExportPNG} onExportJSON={handleExportJSON} onImportJSON={handleImportJSON} onToggleTheme={handleToggleTheme}
           onAddEvent={()=>setEditing({event:{id:uid(),trainId:state.trains[0]?.id,type:'iter',pi:piGroups[0]?.key||'Q1',label:'',start:'',end:''},isNew:true})}/>
 
         <div className="main-wrap" style={{flex:1,overflow:'hidden',display:'flex',position:'relative'}}>
