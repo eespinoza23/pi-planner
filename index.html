@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark light">
   <title>PI Cadence Planner</title>
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
@@ -15,12 +16,16 @@
       --border:#30363D; --border2:#21262D;
       --text:#E6EDF3; --text2:#8B949E; --text3:#484F58;
       --sb-track:#161B22; --sb-thumb:#30363D; --sb-hover:#444C56;
+      color-scheme: dark;
+      accent-color: #388BFD;
     }
     :root.light {
       --bg:#FFFFFF; --surface:#F6F8FA; --surface2:#EAEEF2;
       --border:#D0D7DE; --border2:#E7ECF0;
       --text:#1F2328; --text2:#656D76; --text3:#9198A1;
       --sb-track:#F6F8FA; --sb-thumb:#D0D7DE; --sb-hover:#BCC5CE;
+      color-scheme: light;
+      accent-color: #0969DA;
     }
     *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
     html, body, #root { height:100%; }
@@ -885,7 +890,7 @@ function EditPanel({event,trains,onSave,onDelete,onClose,isNew}){
   const tc=TYPE_CFG[f.type]||TYPE_CFG.iter,train=trains.find(t=>t.id===f.trainId);
   const color=tc.color||(train?.color||T.accent);
   return(
-    <div className="no-print" style={{position:'fixed',right:0,top:0,bottom:0,width:340,background:T.surface,borderLeft:`1px solid ${T.border}`,display:'flex',flexDirection:'column',zIndex:30,animation:'slideInRight .2s ease',boxShadow:'-8px 0 32px rgba(0,0,0,.4)'}}>
+    <div className="no-print" style={{position:'fixed',right:0,top:0,bottom:0,width:340,background:`${T.surface}D9`,backdropFilter:'blur(12px)',WebkitBackdropFilter:'blur(12px)',borderLeft:`1px solid ${T.border}`,display:'flex',flexDirection:'column',zIndex:30,animation:'slideInRight .2s ease',boxShadow:'-8px 0 32px rgba(0,0,0,.4)'}}>
       <div style={{padding:'14px 18px',borderBottom:`1px solid ${T.border2}`,display:'flex',alignItems:'center',gap:10}}>
         <div style={{flex:1}}>
           <div style={{fontSize:'0.6rem',fontWeight:'700',color:T.text3,textTransform:'uppercase',letterSpacing:'.1em'}}>{isNew?'New Event':'Edit Event'}</div>
@@ -950,7 +955,7 @@ function CalEventsPanel({calEvents,year,onUpsert,onDelete,onClose}){
     });
   };
   return(
-    <div className="no-print" style={{position:'fixed',left:0,top:0,bottom:0,width:300,background:T.surface,borderRight:`1px solid ${T.border}`,display:'flex',flexDirection:'column',zIndex:30,animation:'slideInLeft .2s ease',boxShadow:'8px 0 32px rgba(0,0,0,.35)'}}>
+    <div className="no-print" style={{position:'fixed',left:0,top:0,bottom:0,width:300,background:`${T.surface}D9`,backdropFilter:'blur(12px)',WebkitBackdropFilter:'blur(12px)',borderRight:`1px solid ${T.border}`,display:'flex',flexDirection:'column',zIndex:30,animation:'slideInLeft .2s ease',boxShadow:'8px 0 32px rgba(0,0,0,.35)'}}>
       <div style={{padding:'14px 16px',borderBottom:`1px solid ${T.border2}`,display:'flex',alignItems:'center',gap:10}}>
         <div style={{flex:1}}>
           <div style={{fontSize:'0.76rem',fontWeight:'700',color:T.text,fontFamily:"'Space Grotesk',sans-serif"}}>Calendar Events</div>
@@ -1030,9 +1035,9 @@ function SettingsModal({trains,cfg,year,onTrainsChange,onCfgChange,onGenerate,on
   const firstName=cfg.ppOrder==='B_first'?(trains[1]?.name||'B'):(trains[0]?.name||'A');
   const secondName=cfg.ppOrder==='B_first'?(trains[0]?.name||'A'):(trains[1]?.name||'B');
   return(
-    <div className="no-print" style={{position:'fixed',inset:0,background:'rgba(1,4,9,.7)',zIndex:50,display:'flex',alignItems:'center',justifyContent:'center',animation:'fadeIn .15s ease'}}
+    <div className="no-print" style={{position:'fixed',inset:0,background:'rgba(1,4,9,.55)',backdropFilter:'blur(6px)',WebkitBackdropFilter:'blur(6px)',zIndex:50,display:'flex',alignItems:'center',justifyContent:'center',animation:'fadeIn .15s ease'}}
       onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
-      <div style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:14,width:500,maxWidth:'92vw',boxShadow:'0 24px 64px rgba(0,0,0,.6)',animation:'slideUp .2s ease',overflow:'hidden'}}>
+      <div style={{background:`${T.surface}EB`,backdropFilter:'blur(20px)',WebkitBackdropFilter:'blur(20px)',border:`1px solid ${T.border}`,borderRadius:14,width:500,maxWidth:'92vw',boxShadow:'0 24px 64px rgba(0,0,0,.6)',animation:'slideUp .2s ease',overflow:'hidden'}}>
         <div style={{padding:'16px 22px',borderBottom:`1px solid ${T.border2}`,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <span style={{fontSize:'0.9rem',fontWeight:'700',color:T.text,fontFamily:"'Space Grotesk',sans-serif"}}>PI Generator</span>
           <button onClick={onClose} style={{width:26,height:26,borderRadius:6,border:`1px solid ${T.border}`,background:T.btnBg,color:T.text2,fontSize:'1rem',display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
