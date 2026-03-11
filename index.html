@@ -619,8 +619,7 @@ function GridTrainRow({train, events, weeks, totalW, selectedId, onSelect, onLan
   const T=useT();
   const [hov,setHov]=useState(null);
   const trainEvts=events.filter(e=>e.trainId===train.id&&e.type!=='hack').sort((a,b)=>a.start.localeCompare(b.start));
-  // Use end+1 so adjacent events sharing the same week column are treated as overlapping
-  const laneIndices=calcLanes(trainEvts,e=>weekColIdx(e.start,weeks),e=>weekColIdx(e.end,weeks)+1);
+  const laneIndices=calcLanes(trainEvts,e=>weekColIdx(e.start,weeks),e=>weekColIdx(e.end,weeks));
   const numLanes=laneIndices.length?Math.max(...laneIndices)+1:1;
   const laneMap=Object.fromEntries(trainEvts.map((e,i)=>[e.id,laneIndices[i]]));
   const rowH=Math.max(ROW_H,numLanes*ROW_H);
