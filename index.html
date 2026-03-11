@@ -773,26 +773,20 @@ function GridHalf({half, year, allEvents, calEvents, trains, selectedId, onSelec
   const piColorMap={Q1:PI_PALETTE[0],Q2:PI_PALETTE[1],Q3:PI_PALETTE[2],Q4:PI_PALETTE[3]};
   const title=isH1?`Q1 · Q2  —  Jan → Jun ${year}`:`Q3 · Q4  —  Jul → Dec ${year}`;
 
-  const onLaneClick=useCallback((e,train,piKey)=>{
+  const onLaneClick=useCallback((e,train)=>{
     const rect=e.currentTarget.getBoundingClientRect();
     const x=e.clientX-rect.left-LABEL_W;
     const wi=Math.max(0,Math.floor(x/WEEK_W));
     const d=weeks[Math.min(wi,weeks.length-1)];
-    if(d) onSelect(null,{trainId:train.id,type:'iter',pi:piKey||'Q1',label:'',start:toISO(d),end:toISO(addBizDays(d,9))});
-  },[weeks,onSelect]);
+    const pi=d?getPIForDate(toISO(d)):halfPIs[0];
+    if(d) onSelect(null,{trainId:train.id,type:'iter',pi,label:'',start:toISO(d),end:toISO(addBizDays(d,9))});
+  },[weeks,onSelect,getPIForDate,halfPIs]);
 
   return(
     <div ref={containerRef} className={className} style={{overflowX:'auto',background:T.bg}}>
       {/* Half header bar */}
       <div style={{padding:'7px 14px',background:T.surface,borderBottom:`1px solid ${T.border2}`,display:'flex',alignItems:'center',gap:10,minWidth:totalW,position:'sticky',left:0}}>
         <span style={{fontSize:'0.74rem',fontWeight:'700',color:T.text,fontFamily:"'Space Grotesk',sans-serif"}}>{title}</span>
-        <div style={{flex:1}}/>
-        {piGroups.map(({key})=>(
-          <button key={key} onClick={()=>dispatch({type:'TOGGLE_COL',payload:key})}
-            style={{padding:'2px 9px',border:`1px solid ${piColorMap[key]}40`,borderRadius:20,background:`${piColorMap[key]}12`,color:piColorMap[key],fontSize:'0.6rem',fontWeight:'700',cursor:'pointer'}}>
-            {state.collapsed[key]?'+ ':'- '}{key}
-          </button>
-        ))}
       </div>
       <div style={{width:totalW,minWidth:totalW,position:'relative'}}>
         {(()=>{
@@ -812,29 +806,9 @@ function GridHalf({half, year, allEvents, calEvents, trains, selectedId, onSelec
         })()}
         <GridHeader weeks={weeks} totalW={totalW} isLight={isLight}/>
         <GridCalEventsRow calEvents={calEvents} viewStart={viewStart} viewEnd={viewEnd} weeks={weeks} totalW={totalW}/>
-        {piGroups.map(({key,events:pe})=>{
-          if(state.collapsed[key]) return(
-            <div key={key} onClick={()=>dispatch({type:'TOGGLE_COL',payload:key})}
-              style={{height:28,width:totalW,borderBottom:`1px solid ${T.border2}`,background:`${piColorMap[key]}10`,borderLeft:`3px solid ${piColorMap[key]}`,display:'flex',alignItems:'center',paddingLeft:14,cursor:'pointer'}}>
-              <span style={{fontSize:'0.72rem',fontWeight:'700',color:piColorMap[key],fontFamily:"'Space Grotesk',sans-serif"}}>{key}</span>
-              <span style={{fontSize:'0.6rem',color:T.text3,marginLeft:10}}>+ expand</span>
-            </div>
-          );
-          const piEvts=pe.filter(e=>e.pi===key);
-          return(
-            <div key={key}>
-              {/* PI label row */}
-              <div onClick={()=>dispatch({type:'TOGGLE_COL',payload:key})}
-                style={{height:26,width:totalW,borderBottom:`1px solid ${T.border2}`,background:`${piColorMap[key]}12`,borderLeft:`3px solid ${piColorMap[key]}`,display:'flex',alignItems:'center',paddingLeft:14,cursor:'pointer',userSelect:'none'}}>
-                <span style={{fontSize:'0.7rem',fontWeight:'700',color:piColorMap[key],fontFamily:"'Space Grotesk',sans-serif"}}>{key}</span>
-                <span style={{fontSize:'0.58rem',color:T.text3,fontWeight:'700',marginLeft:8,textTransform:'uppercase',letterSpacing:'.06em'}}>collapse ▾</span>
-              </div>
-              {trains[0]&&<GridTrainRow train={trains[0]} events={piEvts} weeks={weeks} totalW={totalW} selectedId={selectedId} onSelect={onSelect} onLaneClick={(e,t)=>onLaneClick(e,t,key)} drag={drag} onDragStart={handleDragStart} dragMovedRef={dragMovedRef}/>}
-              <GridHackRow events={piEvts} weeks={weeks} totalW={totalW} selectedId={selectedId} onSelect={onSelect}/>
-              {trains[1]&&<GridTrainRow train={trains[1]} events={piEvts} weeks={weeks} totalW={totalW} selectedId={selectedId} onSelect={onSelect} onLaneClick={(e,t)=>onLaneClick(e,t,key)} drag={drag} onDragStart={handleDragStart} dragMovedRef={dragMovedRef}/>}
-            </div>
-          );
-        })}
+        {trains[0]&&<GridTrainRow train={trains[0]} events={halfEvts} weeks={weeks} totalW={totalW} selectedId={selectedId} onSelect={onSelect} onLaneClick={(e,t)=>onLaneClick(e,t)} drag={drag} onDragStart={handleDragStart} dragMovedRef={dragMovedRef}/>}
+        <GridHackRow events={halfEvts} weeks={weeks} totalW={totalW} selectedId={selectedId} onSelect={onSelect}/>
+        {trains[1]&&<GridTrainRow train={trains[1]} events={halfEvts} weeks={weeks} totalW={totalW} selectedId={selectedId} onSelect={onSelect} onLaneClick={(e,t)=>onLaneClick(e,t)} drag={drag} onDragStart={handleDragStart} dragMovedRef={dragMovedRef}/>}
       </div>
     </div>
   );
