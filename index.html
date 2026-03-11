@@ -7,6 +7,7 @@
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -618,6 +619,10 @@ function GridTrainRow({train, events, weeks, totalW, selectedId, onSelect, onLan
   const T=useT();
   const [hov,setHov]=useState(null);
   const trainEvts=events.filter(e=>e.trainId===train.id&&e.type!=='hack');
+  const laneIndices=calcLanes(trainEvts,e=>e.start,e=>e.end);
+  const numLanes=laneIndices.length?Math.max(...laneIndices)+1:1;
+  const laneMap=Object.fromEntries(trainEvts.map((e,i)=>[e.id,laneIndices[i]]));
+  const rowH=Math.max(ROW_H,numLanes*ROW_H);
   const isMyDrag=drag?.evt.trainId===train.id;
   // Ghost drop-target overlay
   const ghost=isMyDrag&&drag.hoverWeekIdx!=null?(()=>{
@@ -633,7 +638,7 @@ function GridTrainRow({train, events, weeks, totalW, selectedId, onSelect, onLan
     );
   })():null;
   return(
-    <div style={{position:'relative',height:ROW_H,width:totalW,borderBottom:`1px solid ${T.border2}`,cursor:drag?'grabbing':'cell'}}
+    <div style={{position:'relative',height:rowH,width:totalW,borderBottom:`1px solid ${T.border2}`,cursor:drag?'grabbing':'cell'}}
       onClick={e=>{if(e.target===e.currentTarget&&!drag)onLaneClick(e,train);}}>
       <div style={{position:'sticky',left:0,width:LABEL_W,height:'100%',background:T.bg,borderRight:`1px solid ${T.border}`,display:'flex',alignItems:'center',justifyContent:'flex-end',paddingRight:12,zIndex:3,fontSize:'0.68rem',fontWeight:'700',color:train.color,fontFamily:"'Space Grotesk',sans-serif"}}>
         {train.name}
@@ -652,6 +657,8 @@ function GridTrainRow({train, events, weeks, totalW, selectedId, onSelect, onLan
         const isSel=selectedId===evt.id;
         const isHov=hov===evt.id;
         const isDragging=drag?.evt.id===evt.id;
+        const lane=laneMap[evt.id]||0;
+        const evtTop=4+lane*ROW_H;
         return(
           <div key={evt.id}
             title={`${evt.label} • ${fmtFull(evt.start)} → ${fmtFull(evt.end)}`}
@@ -668,7 +675,7 @@ function GridTrainRow({train, events, weeks, totalW, selectedId, onSelect, onLan
             }}
             onMouseEnter={()=>setHov(evt.id)} onMouseLeave={()=>setHov(null)}
             style={{
-              position:'absolute',left,top:4,width,height:ROW_H-8,
+              position:'absolute',left,top:evtTop,width,height:ROW_H-8,
               background:isSel?`${color}40`:isHov?`${color}30`:`${color}22`,
               border:`1px solid ${color}${isSel?'80':'45'}`,borderLeft:`3px solid ${color}`,
               borderRadius:'0 5px 5px 0',display:'flex',flexDirection:'column',justifyContent:'center',
@@ -1171,7 +1178,7 @@ function Toast({msg,type='success',onDone}){
 }
 
 // ── TOP BAR ───────────────────────────────────────────────────────────────────
-function TopBar({state,dispatch,years,onSave,onAddEvent,onPrint}){
+function TopBar({state,dispatch,years,onSave,onAddEvent,onPrint,onExport}){
   const T=useT();
   const btn={padding:'5px 10px',background:T.btnBg,border:`1px solid ${T.border}`,borderRadius:7,color:T.text2,fontSize:'0.72rem',fontWeight:'600',display:'flex',alignItems:'center',gap:4};
   const calCount=state.calEvents.filter(e=>fromISO(e.start||e.date).getFullYear()===state.year).length;
@@ -1213,6 +1220,7 @@ function TopBar({state,dispatch,years,onSave,onAddEvent,onPrint}){
         {calCount>0&&<span style={{background:'#6366F1',color:'#fff',borderRadius:'50%',width:13,height:13,fontSize:'0.48rem',fontWeight:'700',display:'flex',alignItems:'center',justifyContent:'center',position:'absolute',top:-4,right:-4}}>{calCount}</span>}
       </button>
       <button onClick={onPrint} style={btn}>📄 PDF</button>
+      <button onClick={onExport} style={btn} title="Export current view as PNG">🖼 PNG</button>
       <button onClick={()=>dispatch({type:'SETTINGS',payload:true})} style={btn}>⚙ Config</button>
       <div style={{width:1,height:18,background:T.border}}/>
       <button onClick={()=>dispatch({type:'SET_THEME',payload:state.theme==='dark'?'light':'dark'})} style={{...btn,padding:'5px 8px',fontSize:'0.85rem'}} title="Toggle theme">
@@ -1258,6 +1266,22 @@ function App(){
   const handleSave=useCallback(evt=>{dispatch({type:'UPSERT_EVENT',payload:evt});setToast(editing?.isNew?'Event added':'Changes saved');setEditing(null);},[editing]);
   const handleDelete=useCallback(id=>{dispatch({type:'DELETE_EVENT',payload:id});setToast('Event deleted');setEditing(null);},[]);
   const handleSaveAll=useCallback(()=>{setToast('All changes saved');},[]);
+  const handleExportPNG=useCallback(async()=>{
+    const el=document.querySelector('.grid-view')||document.querySelector('.stacked-view')||document.querySelector('.timeline-view');
+    if(!el||!window.html2canvas){setToast('Export not available');return;}
+    const prev={overflow:el.style.overflow,height:el.style.height};
+    el.style.overflow='visible'; el.style.height='auto';
+    try{
+      const canvas=await window.html2canvas(el,{scale:1.5,useCORS:true,logging:false});
+      const a=document.createElement('a');
+      a.download=`pi-planner-${state.year}.png`;
+      a.href=canvas.toDataURL('image/png');
+      a.click();
+      setToast('PNG exported!');
+    }finally{
+      el.style.overflow=prev.overflow; el.style.height=prev.height;
+    }
+  },[state.year]);
   const handleGenerate=useCallback(()=>{
     const y=fromISO(state.cfg.startDate).getFullYear();
     const evts=generateAll(state.trains,{...state.cfg,year:y});
@@ -1288,7 +1312,7 @@ function App(){
   return(
     <ThemeCtx.Provider value={theme}>
       <div style={{display:'flex',flexDirection:'column',height:'100vh',overflow:'hidden',background:theme.bg}}>
-        <TopBar state={state} dispatch={dispatch} years={years} onSave={handleSaveAll} onPrint={()=>setPrintOpen(true)}
+        <TopBar state={state} dispatch={dispatch} years={years} onSave={handleSaveAll} onPrint={()=>setPrintOpen(true)} onExport={handleExportPNG}
           onAddEvent={()=>setEditing({event:{id:uid(),trainId:state.trains[0]?.id,type:'iter',pi:piGroups[0]?.key||'Q1',label:'',start:'',end:''},isNew:true})}/>
 
         <div className="main-wrap" style={{flex:1,overflow:'hidden',display:'flex',position:'relative'}}>
