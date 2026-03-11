@@ -104,7 +104,8 @@ const MIN_EVT = 44;
 // Grid week calculation
 const getWeekCols = (viewStart, viewEnd) => {
   const weeks = [];
-  let d = prevMonday(new Date(viewStart));
+  const s=new Date(viewStart), w=s.getDay();
+  let d = w===1 ? s : addDays(s, w===0 ? 1 : 8-w); // first Monday on or after viewStart
   while (d <= new Date(viewEnd)) { weeks.push(new Date(d)); d = addDays(d, 7); }
   return weeks;
 };
