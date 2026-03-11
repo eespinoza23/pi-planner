@@ -1179,7 +1179,7 @@ function Toast({msg,type='success',onDone}){
 }
 
 // ── TOP BAR ───────────────────────────────────────────────────────────────────
-function TopBar({state,dispatch,years,onSave,onAddEvent,onPrint,onExport}){
+function TopBar({state,dispatch,years,onSave,onAddEvent,onExport}){
   const T=useT();
   const btn={padding:'5px 10px',background:T.btnBg,border:`1px solid ${T.border}`,borderRadius:7,color:T.text2,fontSize:'0.72rem',fontWeight:'600',display:'flex',alignItems:'center',gap:4};
   const calCount=state.calEvents.filter(e=>fromISO(e.start||e.date).getFullYear()===state.year).length;
@@ -1211,7 +1211,6 @@ function TopBar({state,dispatch,years,onSave,onAddEvent,onPrint,onExport}){
         📅 Cal
         {calCount>0&&<span style={{background:'#6366F1',color:'#fff',borderRadius:'50%',width:13,height:13,fontSize:'0.48rem',fontWeight:'700',display:'flex',alignItems:'center',justifyContent:'center',position:'absolute',top:-4,right:-4}}>{calCount}</span>}
       </button>
-      <button onClick={onPrint} style={btn}>📄 PDF</button>
       <button onClick={onExport} style={btn} title="Export current view as PNG">↓ PNG</button>
       <button onClick={()=>dispatch({type:'SETTINGS',payload:true})} style={btn}>⚙ Config</button>
       <div style={{width:1,height:18,background:T.border}}/>
@@ -1229,7 +1228,6 @@ function App(){
   const [state,dispatch]=useReducer(reducer,null,loadState);
   const [toast,setToast]=useState(null);
   const [editing,setEditing]=useState(null);
-  const [printOpen,setPrintOpen]=useState(false);
   const theme=state.theme==='light'?LIGHT:DARK;
 
   useEffect(()=>{ document.documentElement.classList.toggle('light',state.theme==='light'); },[state.theme]);
@@ -1237,7 +1235,7 @@ function App(){
     localStorage.setItem('pi-v3',JSON.stringify({trains:state.trains,events:state.events,calEvents:state.calEvents,cfg:state.cfg,year:state.year,viewMode:state.viewMode,theme:state.theme}));
   },[state.trains,state.events,state.calEvents,state.cfg,state.year,state.viewMode,state.theme]);
   useEffect(()=>{
-    const h=e=>{if(e.key==='Escape'){setEditing(null);dispatch({type:'SELECT',payload:null});dispatch({type:'CAL_PANEL',payload:false});setPrintOpen(false);}};
+    const h=e=>{if(e.key==='Escape'){setEditing(null);dispatch({type:'SELECT',payload:null});dispatch({type:'CAL_PANEL',payload:false});}};
     window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h);
   },[]);
   useEffect(()=>{
@@ -1304,7 +1302,7 @@ function App(){
   return(
     <ThemeCtx.Provider value={theme}>
       <div style={{display:'flex',flexDirection:'column',height:'100vh',overflow:'hidden',background:theme.bg}}>
-        <TopBar state={state} dispatch={dispatch} years={years} onSave={handleSaveAll} onPrint={()=>setPrintOpen(true)} onExport={handleExportPNG}
+        <TopBar state={state} dispatch={dispatch} years={years} onSave={handleSaveAll} onExport={handleExportPNG}
           onAddEvent={()=>setEditing({event:{id:uid(),trainId:state.trains[0]?.id,type:'iter',pi:piGroups[0]?.key||'Q1',label:'',start:'',end:''},isNew:true})}/>
 
         <div className="main-wrap" style={{flex:1,overflow:'hidden',display:'flex',position:'relative'}}>
@@ -1355,8 +1353,7 @@ function App(){
           onGenerate={handleGenerate} onGenerateFit={handleGenerateFit}
           onClose={()=>dispatch({type:'SETTINGS',payload:false})}/>}
 
-        {printOpen&&<PrintModal onClose={()=>setPrintOpen(false)} onSwitchGrid={()=>dispatch({type:'SET_VIEW',payload:'grid'})}/>}
-        {toast&&<Toast msg={toast} onDone={()=>setToast(null)}/>}
+{toast&&<Toast msg={toast} onDone={()=>setToast(null)}/>}
       </div>
     </ThemeCtx.Provider>
   );
