@@ -320,6 +320,7 @@ const INIT={trains:DEFAULT_TRAINS,events:[],calEvents:[],cfg:INIT_CFG,year:2026,
 function reducer(state,{type,payload}){
   switch(type){
     case 'RESET_EVENTS': return{...state,events:[],selectedId:null};
+    case 'LOAD_STATE': return{...INIT,...payload,settingsOpen:false,selectedId:null,calPanelOpen:false};
     case 'SET_EVENTS':    return{...state,events:payload,selectedId:null};
     case 'UPSERT_EVENT':{const i=state.events.findIndex(e=>e.id===payload.id);return{...state,events:i>=0?state.events.map(e=>e.id===payload.id?payload:e):[...state.events,payload],selectedId:payload.id};}
     case 'DELETE_EVENT':  return{...state,events:state.events.filter(e=>e.id!==payload),selectedId:null};
@@ -1020,7 +1021,7 @@ function CalEventsPanel({calEvents,year,onUpsert,onDelete,onClose}){
 }
 
 // ── SETTINGS MODAL ────────────────────────────────────────────────────────────
-function SettingsModal({trains,cfg,year,onTrainsChange,onCfgChange,onGenerate,onGenerateFit,onClose}){
+function SettingsModal({trains,cfg,year,onTrainsChange,onCfgChange,onGenerate,onGenerateFit,onReset,onClose}){
   const T=useT();
   const [mode,setMode]=useState('autofit');
   const fld={width:'100%',background:T.inputBg,border:`1px solid ${T.border}`,borderRadius:6,padding:'7px 10px',color:T.text,fontSize:'0.8rem',outline:'none',marginBottom:10};
@@ -1109,7 +1110,12 @@ function SettingsModal({trains,cfg,year,onTrainsChange,onCfgChange,onGenerate,on
             </div>
           )}
         </div>
-        <div style={{padding:'12px 22px',borderTop:`1px solid ${T.border2}`,display:'flex',gap:10,justifyContent:'flex-end'}}>
+        <div style={{padding:'12px 22px',borderTop:`1px solid ${T.border2}`,display:'flex',gap:10,alignItems:'center'}}>
+          <button onClick={()=>{if(window.confirm('Clear all PI events? Calendar events and settings are kept.'))onReset();}}
+            style={{padding:'7px 14px',background:`${T.red}15`,border:`1px solid ${T.red}50`,borderRadius:8,color:T.red,fontSize:'0.78rem',fontWeight:'600'}}>
+            🗑 Reset
+          </button>
+          <div style={{flex:1}}/>
           <button onClick={onClose} style={{padding:'7px 16px',background:T.btnBg,border:`1px solid ${T.border}`,borderRadius:8,color:T.text2,fontSize:'0.8rem',fontWeight:'600'}}>Cancel</button>
           <button onClick={()=>{mode==='autofit'?onGenerateFit():onGenerate();onClose();}}
             style={{padding:'7px 20px',background:T.accent,border:'none',borderRadius:8,color:'#fff',fontSize:'0.8rem',fontWeight:'700'}}>
@@ -1179,7 +1185,7 @@ function Toast({msg,type='success',onDone}){
 }
 
 // ── TOP BAR ───────────────────────────────────────────────────────────────────
-function TopBar({state,dispatch,years,onSave,onAddEvent,onExport}){
+function TopBar({state,dispatch,years,onAddEvent,onExport,onExportJSON,onImportJSON}){
   const T=useT();
   const btn={padding:'5px 10px',background:T.btnBg,border:`1px solid ${T.border}`,borderRadius:7,color:T.text2,fontSize:'0.72rem',fontWeight:'600',display:'flex',alignItems:'center',gap:4};
   const calCount=state.calEvents.filter(e=>fromISO(e.start||e.date).getFullYear()===state.year).length;
@@ -1211,14 +1217,15 @@ function TopBar({state,dispatch,years,onSave,onAddEvent,onExport}){
         📅 Cal
         {calCount>0&&<span style={{background:'#6366F1',color:'#fff',borderRadius:'50%',width:13,height:13,fontSize:'0.48rem',fontWeight:'700',display:'flex',alignItems:'center',justifyContent:'center',position:'absolute',top:-4,right:-4}}>{calCount}</span>}
       </button>
-      <button onClick={onExport} style={btn} title="Export current view as PNG">↓ PNG</button>
-      <button onClick={()=>dispatch({type:'SETTINGS',payload:true})} style={btn}>⚙ Config</button>
       <div style={{width:1,height:18,background:T.border}}/>
+      <button onClick={onExportJSON} style={{...btn,color:T.green,borderColor:`${T.green}50`}} title="Export calendar as JSON file">↓ JSON</button>
+      <button onClick={onImportJSON} style={{...btn,color:T.green,borderColor:`${T.green}50`}} title="Import calendar from JSON file">↑ JSON</button>
+      <button onClick={onExport} style={btn} title="Export current view as PNG">↓ PNG</button>
+      <div style={{width:1,height:18,background:T.border}}/>
+      <button onClick={()=>dispatch({type:'SETTINGS',payload:true})} style={btn}>⚙ Config</button>
       <button onClick={()=>dispatch({type:'SET_THEME',payload:state.theme==='dark'?'light':'dark'})} style={{...btn,padding:'5px 8px',fontSize:'0.85rem'}} title="Toggle theme">
         {state.theme==='dark'?'☀️':'🌙'}
       </button>
-      <button onClick={()=>{if(window.confirm('Clear all PI events? Calendar events and settings are kept.'))dispatch({type:'RESET_EVENTS'});}} style={{...btn,color:T.red,borderColor:`${T.red}50`,background:`${T.red}10`}} title="Clear all PI events">🗑 Reset</button>
-      <button onClick={onSave} style={{...btn,color:T.green,borderColor:`${T.green}50`,background:`${T.green}10`}}>💾 Save</button>
     </div>
   );
 }
@@ -1255,7 +1262,33 @@ function App(){
   },[]);
   const handleSave=useCallback(evt=>{dispatch({type:'UPSERT_EVENT',payload:evt});setToast(editing?.isNew?'Event added':'Changes saved');setEditing(null);},[editing]);
   const handleDelete=useCallback(id=>{dispatch({type:'DELETE_EVENT',payload:id});setToast('Event deleted');setEditing(null);},[]);
-  const handleSaveAll=useCallback(()=>{setToast('All changes saved');},[]);
+  const handleExportJSON=useCallback(()=>{
+    const data={trains:state.trains,events:state.events,calEvents:state.calEvents,cfg:state.cfg,year:state.year,theme:state.theme};
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+    const a=document.createElement('a');
+    a.download=`pi-planner-${state.year}.json`;
+    a.href=URL.createObjectURL(blob);
+    a.click();
+    URL.revokeObjectURL(a.href);
+    setToast('Exported as JSON');
+  },[state.trains,state.events,state.calEvents,state.cfg,state.year,state.theme]);
+  const handleImportJSON=useCallback(()=>{
+    const input=document.createElement('input');
+    input.type='file'; input.accept='.json';
+    input.onchange=e=>{
+      const file=e.target.files[0]; if(!file) return;
+      const reader=new FileReader();
+      reader.onload=ev=>{
+        try{
+          const data=JSON.parse(ev.target.result);
+          dispatch({type:'LOAD_STATE',payload:data});
+          setToast('Calendar imported!');
+        }catch{setToast('Invalid JSON file');}
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  },[dispatch]);
   const handleExportPNG=useCallback(async()=>{
     const el=document.querySelector('.grid-view')||document.querySelector('.stacked-view')||document.querySelector('.timeline-view');
     if(!el||!window.html2canvas){setToast('Export not available');return;}
@@ -1302,7 +1335,7 @@ function App(){
   return(
     <ThemeCtx.Provider value={theme}>
       <div style={{display:'flex',flexDirection:'column',height:'100vh',overflow:'hidden',background:theme.bg}}>
-        <TopBar state={state} dispatch={dispatch} years={years} onSave={handleSaveAll} onExport={handleExportPNG}
+        <TopBar state={state} dispatch={dispatch} years={years} onExport={handleExportPNG} onExportJSON={handleExportJSON} onImportJSON={handleImportJSON}
           onAddEvent={()=>setEditing({event:{id:uid(),trainId:state.trains[0]?.id,type:'iter',pi:piGroups[0]?.key||'Q1',label:'',start:'',end:''},isNew:true})}/>
 
         <div className="main-wrap" style={{flex:1,overflow:'hidden',display:'flex',position:'relative'}}>
@@ -1351,6 +1384,7 @@ function App(){
           onTrainsChange={t=>dispatch({type:'SET_TRAINS',payload:t})}
           onCfgChange={c=>dispatch({type:'SET_CFG',payload:c})}
           onGenerate={handleGenerate} onGenerateFit={handleGenerateFit}
+          onReset={()=>{dispatch({type:'RESET_EVENTS'});setToast('All PI events cleared');}}
           onClose={()=>dispatch({type:'SETTINGS',payload:false})}/>}
 
 {toast&&<Toast msg={toast} onDone={()=>setToast(null)}/>}
