@@ -43,7 +43,7 @@
     input[type="date"]::-webkit-calendar-picker-indicator { cursor:pointer; }
     :root.light input[type="date"]::-webkit-calendar-picker-indicator { filter:invert(0.7); }
     input[type="color"] { cursor:pointer; border:none; padding:0; background:none; }
-    .scroll-wrap { scroll-behavior:smooth; scrollbar-gutter:stable; }
+    .scroll-wrap { scroll-behavior:smooth; scrollbar-gutter:stable; overscroll-behavior:contain; }
     @media (prefers-reduced-motion:no-preference) {
       ::view-transition-old(root), ::view-transition-new(root) { animation-duration:.3s; animation-timing-function:ease; }
     }
@@ -61,7 +61,7 @@
       .scroll-wrap { overflow:visible !important; height:auto !important; padding:0 !important; }
       .timeline-view,.stacked-view { display:none !important; }
       .grid-view { display:block !important; }
-      .h2-section { break-before:page; }
+      .h2-section { break-before:page; content-visibility:auto; contain-intrinsic-size:0 800px; }
       .print-legend { display:flex !important; margin-top:16px; flex-wrap:wrap; gap:12px; }
     }
   </style>
@@ -1359,7 +1359,7 @@ function App(){
 
         <div className="main-wrap" style={{flex:1,overflow:'hidden',display:'flex',position:'relative'}}>
           {/* ── GRID VIEW ── */}
-          <div className="grid-view scroll-wrap" style={{flex:1,overflowY:'auto',paddingLeft:calOpen?300:0,paddingRight:panelOpen?340:0,transition:'padding .2s ease'}}>
+          <div className="grid-view scroll-wrap" inert={state.settingsOpen?'':undefined} style={{flex:1,overflowY:'auto',paddingLeft:calOpen?300:0,paddingRight:panelOpen?340:0,transition:'padding .2s ease'}}>
             {yearEvents.length===0?emptyState:(
               <>
                 <GridHalf half={1} year={state.year} {...sharedProps} className="stacked-h1" isLight={state.theme==='light'}/>
