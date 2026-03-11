@@ -566,7 +566,7 @@ function GridHeader({weeks, totalW, isLight}){
         <div style={{position:'sticky',left:0,width:LABEL_W,height:'100%',background:T.surface2,borderRight:`1px solid ${T.border2}`,zIndex:3}}/>
         {qSpans.map(({q,qi,start,count})=>(
           <div key={q} style={{position:'absolute',left:LABEL_W+start*WEEK_W,top:0,width:count*WEEK_W,height:'100%',background:QC[qi],borderLeft:`2px solid ${GRID_Q_TEXT[qi]}40`,display:'flex',alignItems:'center',justifyContent:'center'}}>
-            <span style={{fontSize:'0.74rem',fontWeight:'800',color:GRID_Q_TEXT[qi],fontFamily:"'Space Grotesk',sans-serif",letterSpacing:'0.06em'}}>{q}</span>
+            <span style={{fontSize:'0.74rem',fontWeight:'800',color:GRID_Q_TEXT[qi],fontFamily:"'Space Grotesk',sans-serif",letterSpacing:'0.12em',textTransform:'uppercase'}}>{q}</span>
           </div>
         ))}
       </div>
@@ -809,7 +809,7 @@ function GridHalf({half, year, allEvents, calEvents, trains, selectedId, onSelec
     <div ref={containerRef} className={className} style={{overflowX:'auto',background:T.bg}}>
       {/* Half header bar */}
       <div style={{padding:'7px 14px',background:T.surface,borderBottom:`1px solid ${T.border2}`,display:'flex',alignItems:'center',gap:10,minWidth:totalW,position:'sticky',left:0}}>
-        <span style={{fontSize:'0.74rem',fontWeight:'700',color:T.text,fontFamily:"'Space Grotesk',sans-serif"}}>{title}</span>
+        <span style={{fontSize:'0.74rem',fontWeight:'700',color:T.text,fontFamily:"'Space Grotesk',sans-serif",letterSpacing:'0.03em'}}>{title}</span>
       </div>
       <div style={{width:totalW,minWidth:totalW,position:'relative'}}>
         {(()=>{
@@ -863,7 +863,7 @@ function HalfYearView({half,year,allEvents,calEvents,trains,selectedId,onSelect,
   return(
     <div className={className} style={{overflowX:'auto',background:T.bg}}>
       <div style={{padding:'7px 14px',background:T.surface,borderBottom:`1px solid ${T.border2}`,display:'flex',alignItems:'center',gap:10,minWidth:totalW,position:'sticky',left:0}}>
-        <span style={{fontSize:'0.74rem',fontWeight:'700',color:T.text,fontFamily:"'Space Grotesk',sans-serif"}}>{title}</span>
+        <span style={{fontSize:'0.74rem',fontWeight:'700',color:T.text,fontFamily:"'Space Grotesk',sans-serif",letterSpacing:'0.03em'}}>{title}</span>
         <div style={{flex:1}}/>
         {piGroups.map(({key})=>(
           <button key={key} onClick={()=>dispatch({type:'TOGGLE_COL',payload:key})}
