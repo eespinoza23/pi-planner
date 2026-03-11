@@ -619,7 +619,7 @@ function GridTrainRow({train, events, weeks, totalW, selectedId, onSelect, onLan
   const T=useT();
   const [hov,setHov]=useState(null);
   const trainEvts=events.filter(e=>e.trainId===train.id&&e.type!=='hack');
-  const laneIndices=calcLanes(trainEvts,e=>e.start,e=>e.end);
+  const laneIndices=calcLanes(trainEvts,e=>weekColIdx(e.start,weeks),e=>weekColIdx(e.end,weeks));
   const numLanes=laneIndices.length?Math.max(...laneIndices)+1:1;
   const laneMap=Object.fromEntries(trainEvts.map((e,i)=>[e.id,laneIndices[i]]));
   const rowH=Math.max(ROW_H,numLanes*ROW_H);
@@ -1220,7 +1220,7 @@ function TopBar({state,dispatch,years,onSave,onAddEvent,onPrint,onExport}){
         {calCount>0&&<span style={{background:'#6366F1',color:'#fff',borderRadius:'50%',width:13,height:13,fontSize:'0.48rem',fontWeight:'700',display:'flex',alignItems:'center',justifyContent:'center',position:'absolute',top:-4,right:-4}}>{calCount}</span>}
       </button>
       <button onClick={onPrint} style={btn}>📄 PDF</button>
-      <button onClick={onExport} style={btn} title="Export current view as PNG">🖼 PNG</button>
+      <button onClick={onExport} style={btn} title="Export current view as PNG">↓ PNG</button>
       <button onClick={()=>dispatch({type:'SETTINGS',payload:true})} style={btn}>⚙ Config</button>
       <div style={{width:1,height:18,background:T.border}}/>
       <button onClick={()=>dispatch({type:'SET_THEME',payload:state.theme==='dark'?'light':'dark'})} style={{...btn,padding:'5px 8px',fontSize:'0.85rem'}} title="Toggle theme">
