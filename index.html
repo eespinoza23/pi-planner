@@ -726,7 +726,7 @@ function GridHalf({half, year, allEvents, calEvents, trains, selectedId, onSelec
   const weeks=useMemo(()=>getWeekCols(viewStart,viewEnd),[viewStart,viewEnd]);
   const totalW=LABEL_W+weeks.length*WEEK_W+2;
   const halfPIs=isH1?['Q1','Q2']:['Q3','Q4'];
-  const halfEvts=useMemo(()=>allEvents.filter(e=>halfPIs.includes(e.pi)),[allEvents,halfPIs]);
+  const halfEvts=useMemo(()=>{const vs=toISO(viewStart),ve=toISO(viewEnd);return allEvents.filter(e=>e.start<=ve&&e.end>=vs);},[allEvents,viewStart,viewEnd]);
 
   // ── DRAG STATE ──
   const containerRef=React.useRef(null);
@@ -831,7 +831,7 @@ function HalfYearView({half,year,allEvents,calEvents,trains,selectedId,onSelect,
   const totalDays=isH1?daysInH1(year):daysInH2(year);
   const totalW=LABEL_W+totalDays*DAY_WS+20;
   const halfPIs=isH1?['Q1','Q2']:['Q3','Q4'];
-  const halfEvts=useMemo(()=>allEvents.filter(e=>halfPIs.includes(e.pi)),[allEvents,halfPIs]);
+  const halfEvts=useMemo(()=>{const vs=toISO(viewStart),ve=toISO(viewEnd);return allEvents.filter(e=>e.start<=ve&&e.end>=vs);},[allEvents,viewStart,viewEnd]);
   const piGroups=useMemo(()=>{
     const g={};
     halfEvts.forEach(e=>{if(!g[e.pi])g[e.pi]=[];g[e.pi].push(e);});
