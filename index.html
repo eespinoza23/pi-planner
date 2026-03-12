@@ -942,7 +942,7 @@ function EditPanel({event,trains,onSave,onDelete,onClose,isNew}){
   const tc=TYPE_CFG[f.type]||TYPE_CFG.iter,train=trains.find(t=>t.id===f.trainId);
   const color=tc.color||(train?.color||T.accent);
   return(
-    <div className="no-print" style={{position:'fixed',right:0,top:0,bottom:0,width:340,background:`${T.surface}D9`,backdropFilter:'blur(12px)',WebkitBackdropFilter:'blur(12px)',borderLeft:`1px solid ${T.border}`,display:'flex',flexDirection:'column',zIndex:30,animation:'slideInRight .2s ease',boxShadow:'-8px 0 32px rgba(0,0,0,.4)'}}>
+    <div className="no-print" onKeyDown={e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'&&f.start&&f.end&&f.label){e.preventDefault();onSave(f);}}} style={{position:'fixed',right:0,top:0,bottom:0,width:340,background:`${T.surface}D9`,backdropFilter:'blur(12px)',WebkitBackdropFilter:'blur(12px)',borderLeft:`1px solid ${T.border}`,display:'flex',flexDirection:'column',zIndex:30,animation:'slideInRight .2s ease',boxShadow:'-8px 0 32px rgba(0,0,0,.4)'}}>
       <div style={{padding:'14px 18px',borderBottom:`1px solid ${T.border2}`,display:'flex',alignItems:'center',gap:10}}>
         <div style={{flex:1}}>
           <div style={{fontSize:'0.6rem',fontWeight:'700',color:T.text3,textTransform:'uppercase',letterSpacing:'.1em'}}>{isNew?'New Event':'Edit Event'}</div>
@@ -977,6 +977,7 @@ function EditPanel({event,trains,onSave,onDelete,onClose,isNew}){
       </div>
       <div style={{padding:'12px 18px',borderTop:`1px solid ${T.border2}`,display:'flex',flexDirection:'column',gap:8}}>
         <button onClick={()=>{if(!f.start||!f.end||!f.label)return;onSave(f);}} disabled={!f.start||!f.end||!f.label}
+          title="Save (Ctrl+Enter)"
           style={{padding:'9px',background:T.accent,border:'none',borderRadius:8,color:'#fff',fontSize:'0.8rem',fontWeight:'700',opacity:(!f.start||!f.end||!f.label)?.5:1}}>
           {isNew?'Add Event':'Save Changes'}</button>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
@@ -998,11 +999,12 @@ function CalEventsPanel({calEvents,year,onUpsert,onDelete,onClose}){
   const lbl={display:'block',fontSize:'0.66rem',fontWeight:'600',color:T.text2,marginBottom:4,textTransform:'uppercase',letterSpacing:'.08em'};
   const yearEvts=calEvents.filter(e=>fromISO(e.start||e.date).getFullYear()===year).sort((a,b)=>(a.start||a.date)>(b.start||b.date)?1:-1);
   const loadHolidays=()=>{
-    const existing=new Set(calEvents.map(e=>e.label));
+    const existing=new Set(calEvents.filter(e=>fromISO(e.start||e.date).getFullYear()===year).map(e=>e.label));
     CA_HOLIDAYS_2026.forEach(h=>{
+      const date=h.date.replace('2026',String(year));
       if(!existing.has(h.label)){
         const col=h.scope==='qc'?'#F59E0B':'#6366F1';
-        onUpsert({id:uid(),label:h.label,type:'holiday',start:h.date,end:h.date,color:col});
+        onUpsert({id:uid(),label:h.label,type:'holiday',start:date,end:date,color:col});
       }
     });
   };
@@ -1019,7 +1021,7 @@ function CalEventsPanel({calEvents,year,onUpsert,onDelete,onClose}){
         <div style={{flex:1,overflowY:'auto'}}>
           <div style={{padding:'10px 16px',borderBottom:`1px solid ${T.border2}`}}>
             <button onClick={loadHolidays} style={{width:'100%',padding:'7px',background:`${T.accent}15`,border:`1px solid ${T.accent}40`,borderRadius:8,color:T.accent,fontSize:'0.74rem',fontWeight:'700',cursor:'pointer'}}>
-              🍁 Load 2026 Canada / QC Holidays
+              🍁 Load {year} Canada / QC Holidays
             </button>
             <div style={{display:'flex',gap:12,marginTop:7,fontSize:'0.58rem',color:T.text3}}>
               <span><span style={{color:'#6366F1'}}>●</span> Federal</span>
@@ -1308,9 +1310,15 @@ function App(){
     localStorage.setItem('pi-v3',JSON.stringify({trains:state.trains,events:state.events,calEvents:state.calEvents,cfg:state.cfg,year:state.year,viewMode:state.viewMode,theme:state.theme}));
   },[state.trains,state.events,state.calEvents,state.cfg,state.year,state.viewMode,state.theme]);
   useEffect(()=>{
-    const h=e=>{if(e.key==='Escape'){setEditing(null);dispatch({type:'SELECT',payload:null});dispatch({type:'CAL_PANEL',payload:false});}};
+    const h=e=>{
+      if(e.key==='Escape'){setEditing(null);dispatch({type:'SELECT',payload:null});dispatch({type:'CAL_PANEL',payload:false});}
+      if(e.key==='Delete'&&state.selectedId&&!editing){
+        const tag=document.activeElement?.tagName;
+        if(tag!=='INPUT'&&tag!=='TEXTAREA'&&tag!=='SELECT') handleDelete(state.selectedId);
+      }
+    };
     window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h);
-  },[]);
+  },[state.selectedId,editing,handleDelete]);
   useEffect(()=>{
     if(state.selectedId){const evt=state.events.find(e=>e.id===state.selectedId);if(evt)setEditing({event:evt,isNew:false});}
   },[state.selectedId]);
@@ -1398,7 +1406,8 @@ function App(){
   },[state.trains,state.year,state.cfg]);
 
   const panelOpen=!!editing, calOpen=state.calPanelOpen;
-  const isWide=window.innerWidth>=760;
+  const [isWide,setIsWide]=useState(window.innerWidth>=760);
+  useEffect(()=>{const h=()=>setIsWide(window.innerWidth>=760);window.addEventListener('resize',h);return()=>window.removeEventListener('resize',h);},[]);
   const sharedProps={allEvents:yearEvents,calEvents:state.calEvents,trains:state.trains,selectedId:state.selectedId,onSelect:handleSelect,state,dispatch};
 
   const emptyState=(
