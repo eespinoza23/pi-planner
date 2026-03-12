@@ -948,7 +948,7 @@ function EditPanel({event,trains,onSave,onDelete,onClose,isNew}){
           <div style={{fontSize:'0.6rem',fontWeight:'700',color:T.text3,textTransform:'uppercase',letterSpacing:'.1em'}}>{isNew?'New Event':'Edit Event'}</div>
           {!isNew&&<div style={{fontSize:'0.72rem',color:T.text2,marginTop:2,fontFamily:"'JetBrains Mono',monospace"}}>{f.id?.slice(0,8)}</div>}
         </div>
-        <button onClick={onClose} style={{width:26,height:26,borderRadius:6,border:`1px solid ${T.border}`,background:T.btnBg,color:T.text2,fontSize:'1rem',display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
+        <button onClick={onClose} aria-label="Close" style={{width:26,height:26,borderRadius:6,border:`1px solid ${T.border}`,background:T.btnBg,color:T.text2,fontSize:'1rem',display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
       </div>
       <div style={{flex:1,overflowY:'auto',padding:'16px 18px'}}>
         <div style={{marginBottom:12}}><label style={lbl}>Type</label>
@@ -1015,7 +1015,7 @@ function CalEventsPanel({calEvents,year,onUpsert,onDelete,onClose}){
           <div style={{fontSize:'0.76rem',fontWeight:'700',color:T.text,fontFamily:"'Space Grotesk',sans-serif"}}>Calendar Events</div>
           <div style={{fontSize:'0.58rem',color:T.text3,marginTop:2}}>Info markers — don't affect execution</div>
         </div>
-        <button onClick={onClose} style={{width:26,height:26,borderRadius:6,border:`1px solid ${T.border}`,background:T.btnBg,color:T.text2,fontSize:'1rem',display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
+        <button onClick={onClose} aria-label="Close" style={{width:26,height:26,borderRadius:6,border:`1px solid ${T.border}`,background:T.btnBg,color:T.text2,fontSize:'1rem',display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
       </div>
       {form===null?(
         <div style={{flex:1,overflowY:'auto'}}>
@@ -1039,7 +1039,7 @@ function CalEventsPanel({calEvents,year,onUpsert,onDelete,onClose}){
                   <div style={{fontSize:'0.74rem',fontWeight:'600',color:T.text,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{ti.emoji} {ce.label}</div>
                   <div style={{fontSize:'0.58rem',color:T.text3,fontFamily:"'JetBrains Mono',monospace",marginTop:1}}>{fmtMD(ce.start||ce.date)}</div>
                 </div>
-                <button onClick={e=>{e.stopPropagation();onDelete(ce.id);}} style={{background:'none',border:'none',color:T.text3,fontSize:'0.85rem',padding:'2px 4px'}}>×</button>
+                <button onClick={e=>{e.stopPropagation();onDelete(ce.id);}} aria-label="Remove event" style={{background:'none',border:'none',color:T.text3,fontSize:'0.85rem',padding:'2px 4px'}}>×</button>
               </div>
             );
           })}
@@ -1094,7 +1094,7 @@ function SettingsModal({trains,cfg,year,onTrainsChange,onCfgChange,onGenerate,on
       <div style={{background:`${T.surface}EB`,backdropFilter:'blur(20px)',WebkitBackdropFilter:'blur(20px)',border:`1px solid ${T.border}`,borderRadius:14,width:500,maxWidth:'92vw',boxShadow:'0 24px 64px rgba(0,0,0,.6)',animation:'slideUp .2s ease',overflow:'hidden'}}>
         <div style={{padding:'16px 22px',borderBottom:`1px solid ${T.border2}`,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <span style={{fontSize:'0.9rem',fontWeight:'700',color:T.text,fontFamily:"'Space Grotesk',sans-serif"}}>PI Generator</span>
-          <button onClick={onClose} style={{width:26,height:26,borderRadius:6,border:`1px solid ${T.border}`,background:T.btnBg,color:T.text2,fontSize:'1rem',display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
+          <button onClick={onClose} aria-label="Close" style={{width:26,height:26,borderRadius:6,border:`1px solid ${T.border}`,background:T.btnBg,color:T.text2,fontSize:'1rem',display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
         </div>
         <div style={{padding:'18px 22px',maxHeight:'72vh',overflowY:'auto'}}>
           {/* Mode */}
@@ -1270,7 +1270,7 @@ function TopBar({state,dispatch,years,onAddEvent,onExport,onExportJSON,onImportJ
             value={t.name}
             onChange={e=>dispatch({type:'SET_TRAINS',payload:state.trains.map(tr=>tr.id===t.id?{...tr,name:e.target.value}:tr)})}
             title="Click to rename this ART"
-            style={{fontSize:'0.68rem',fontWeight:'600',color:T.text2,background:'transparent',border:'none',outline:'none',width:`${Math.max(4,t.name.length)}ch`,cursor:'text',fontFamily:'inherit',padding:0}}
+            style={{fontSize:'0.68rem',fontWeight:'600',color:T.text2,background:'transparent',border:'none',outline:'none',width:`${Math.max(4,t.name.length+1)}ch`,maxWidth:'160px',cursor:'text',fontFamily:'inherit',padding:0}}
             onFocus={e=>e.target.style.borderBottom=`1px solid ${t.color}`}
             onBlur={e=>e.target.style.borderBottom='none'}
           />
@@ -1444,24 +1444,6 @@ function App(){
               </>
             )}
           </div>
-          {false&&(
-            <div className="timeline-view scroll-wrap" style={{flex:1,overflowX:'auto',overflowY:'auto',paddingLeft:calOpen?300:0,paddingRight:panelOpen?340:0,transition:'padding .2s ease'}}>
-              {yearEvents.length===0?emptyState:(
-                <div style={{width:totalW,minWidth:totalW}}>
-                  <MonthRuler viewStart={viewStart} viewEnd={viewEnd} totalW={totalW} dayW={DAY_W}/>
-                  <CalEventsRow calEvents={state.calEvents} viewStart={viewStart} viewEnd={viewEnd} totalW={totalW} dayW={DAY_W}/>
-                  {piGroups.map(({key,events:pe},i)=>(
-                    <PISection key={key} piKey={key} events={pe} trains={state.trains} viewStart={viewStart} totalW={totalW} dayW={DAY_W}
-                      selectedId={state.selectedId} onSelect={handleSelect}
-                      color={PI_PALETTE[i%PI_PALETTE.length]}
-                      isCollapsed={!!state.collapsed[key]}
-                      onToggle={k=>dispatch({type:'TOGGLE_COL',payload:k})}/>
-                  ))}
-                  <div style={{height:40}}/>
-                </div>
-              )}
-            </div>
-          )}
 
           {calOpen&&<CalEventsPanel calEvents={state.calEvents} year={state.year}
             onUpsert={evt=>{dispatch({type:'UPSERT_CAL',payload:evt});setToast('Calendar event saved');}}
