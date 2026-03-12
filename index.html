@@ -394,8 +394,8 @@ function MonthRuler({viewStart, viewEnd, totalW, dayW=DAY_W}){
           </React.Fragment>
         ))}
         {tLeft>LABEL_W&&tLeft<totalW&&(
-          <div style={{position:'absolute',left:tLeft-LABEL_W,top:0,height:'100%',borderLeft:`2px solid ${T.red}`,opacity:.7}}>
-            <span style={{position:'absolute',top:3,left:3,fontSize:'0.48rem',color:T.red,fontWeight:'700',whiteSpace:'nowrap'}}>TODAY</span>
+          <div style={{position:'absolute',left:tLeft-LABEL_W,top:0,height:'100%',borderLeft:`2px solid ${T.red}`,opacity:1,boxShadow:`0 0 6px ${T.red}60`}}>
+            <span style={{position:'absolute',top:3,left:3,fontSize:'0.52rem',color:T.red,fontWeight:'800',whiteSpace:'nowrap',letterSpacing:'0.05em'}}>TODAY</span>
           </div>
         )}
       </div>
@@ -722,22 +722,52 @@ function GridTrainRow({train, events, weeks, totalW, selectedId, onSelect, onLan
   );
 }
 
-function GridHackRow({events, weeks, totalW, selectedId, onSelect}){
+function GridHackRow({events, weeks, totalW, selectedId, onSelect, drag, onDragStart, dragMovedRef}){
   const T=useT();
+  const [hov,setHov]=useState(null);
   const hacks=events.filter(e=>e.type==='hack');
   if(!hacks.length) return null;
+  const isMyDrag=drag&&hacks.some(h=>h.id===drag.evt.id);
+  const ghost=isMyDrag&&drag.hoverWeekIdx!=null?(()=>{
+    const durW=Math.max(1,Math.round(drag.durationDays/7));
+    const hw=Math.max(0,Math.min(weeks.length-1,drag.hoverWeekIdx));
+    return(
+      <div style={{position:'absolute',left:LABEL_W+hw*WEEK_W+1,top:3,
+        width:Math.max(WEEK_W-2,durW*WEEK_W-2),height:HACK_H-6,
+        background:'#D2992240',border:'2px dashed #D29922',borderRadius:3,
+        pointerEvents:'none',zIndex:10,boxShadow:'0 0 8px #D2992230'}}/>
+    );
+  })():null;
   return(
-    <div style={{position:'relative',height:HACK_H,width:totalW,background:T.bg}}>
+    <div style={{position:'relative',height:HACK_H,width:totalW,background:T.bg,cursor:drag?'grabbing':'default'}}>
       <div style={{position:'sticky',left:0,width:LABEL_W,height:'100%',background:T.bg,borderRight:`1px solid ${T.border}`,zIndex:2}}/>
       {weeks.map((_,i)=><div key={i} style={{position:'absolute',left:LABEL_W+i*WEEK_W,top:0,bottom:0,borderLeft:`1px solid ${T.border2}`,width:WEEK_W}}/>)}
+      {ghost}
       {hacks.map(hk=>{
         const si=weekColIdx(hk.start,weeks), ei=weekColIdx(hk.end,weeks);
         const left=LABEL_W+si*WEEK_W+1;
         const w=Math.max(WEEK_W-2,(ei-si+1)*WEEK_W-2);
         const isSel=selectedId===hk.id;
+        const isHov=hov===hk.id;
+        const isDragging=drag?.evt.id===hk.id;
         return(
-          <div key={hk.id} onClick={e=>{e.stopPropagation();onSelect(hk.id);}}
-            style={{position:'absolute',left,top:3,width:w,height:HACK_H-6,background:'linear-gradient(90deg,#78350F,#92400E)',border:`1px solid ${isSel?'#F59E0B80':'#78350F'}`,borderRadius:3,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',zIndex:3}}>
+          <div key={hk.id}
+            onMouseDown={e=>{
+              if(e.button!==0) return;
+              e.stopPropagation(); e.preventDefault();
+              const grabX=e.clientX-e.currentTarget.getBoundingClientRect().left;
+              onDragStart(hk, Math.max(0,Math.floor(grabX/WEEK_W)), diffDays(hk.start,hk.end), si);
+            }}
+            onClick={e=>{e.stopPropagation();if(dragMovedRef?.current){dragMovedRef.current=false;return;}onSelect(hk.id);}}
+            onMouseEnter={()=>setHov(hk.id)} onMouseLeave={()=>setHov(null)}
+            style={{position:'absolute',left,top:3,width:w,height:HACK_H-6,
+              background:'linear-gradient(90deg,#78350F,#92400E)',
+              border:`1px solid ${isSel?'#F59E0B80':'#78350F'}`,borderRadius:3,
+              display:'flex',alignItems:'center',justifyContent:'center',
+              cursor:drag?'grabbing':'grab',zIndex:3,
+              opacity:isDragging?0.35:1,userSelect:'none',
+              boxShadow:isSel?'0 0 0 2px #F59E0B50':isHov?'0 2px 8px #78350F60':'none'}}>
+            {isHov&&!drag&&<span style={{position:'absolute',left:2,fontSize:'0.5rem',color:'#FEF3C790',userSelect:'none'}}>⠿</span>}
             <span style={{fontSize:'0.54rem',fontWeight:'800',color:'#FEF3C7',letterSpacing:'0.14em'}}>HACKATHON</span>
           </div>
         );
@@ -843,7 +873,7 @@ function GridHalf({half, year, allEvents, calEvents, trains, selectedId, onSelec
         <GridHeader weeks={weeks} totalW={totalW} isLight={isLight}/>
         <GridCalEventsRow calEvents={calEvents} viewStart={viewStart} viewEnd={viewEnd} weeks={weeks} totalW={totalW}/>
         {trains[0]&&<GridTrainRow train={trains[0]} events={halfEvts} weeks={weeks} totalW={totalW} selectedId={selectedId} onSelect={onSelect} onLaneClick={(e,t)=>onLaneClick(e,t)} drag={drag} onDragStart={handleDragStart} dragMovedRef={dragMovedRef}/>}
-        <GridHackRow events={halfEvts} weeks={weeks} totalW={totalW} selectedId={selectedId} onSelect={onSelect}/>
+        <GridHackRow events={halfEvts} weeks={weeks} totalW={totalW} selectedId={selectedId} onSelect={onSelect} drag={drag} onDragStart={handleDragStart} dragMovedRef={dragMovedRef}/>
         {trains[1]&&<GridTrainRow train={trains[1]} events={halfEvts} weeks={weeks} totalW={totalW} selectedId={selectedId} onSelect={onSelect} onLaneClick={(e,t)=>onLaneClick(e,t)} drag={drag} onDragStart={handleDragStart} dragMovedRef={dragMovedRef}/>}
       </div>
     </div>
@@ -1361,6 +1391,7 @@ function App(){
   },[state.trains,state.year,state.cfg]);
 
   const panelOpen=!!editing, calOpen=state.calPanelOpen;
+  const isWide=window.innerWidth>=760;
   const sharedProps={allEvents:yearEvents,calEvents:state.calEvents,trains:state.trains,selectedId:state.selectedId,onSelect:handleSelect,state,dispatch};
 
   const emptyState=(
@@ -1380,8 +1411,13 @@ function App(){
           onAddEvent={()=>setEditing({event:{id:uid(),trainId:state.trains[0]?.id,type:'iter',pi:piGroups[0]?.key||'Q1',label:'',start:'',end:''},isNew:true})}/>
 
         <div className="main-wrap" style={{flex:1,overflow:'hidden',display:'flex',position:'relative'}}>
+          {/* Mobile backdrop when a panel is open on narrow screens */}
+          {!isWide&&(calOpen||panelOpen)&&(
+            <div onClick={()=>{dispatch({type:'CAL_PANEL',payload:false});setEditing(null);dispatch({type:'SELECT',payload:null});}}
+              style={{position:'absolute',inset:0,background:'rgba(0,0,0,.55)',zIndex:25,backdropFilter:'blur(2px)'}}/>
+          )}
           {/* ── GRID VIEW ── */}
-          <div className="grid-view scroll-wrap" inert={state.settingsOpen?'':undefined} style={{flex:1,overflowY:'auto',paddingLeft:calOpen?300:0,paddingRight:panelOpen?340:0,transition:'padding .2s ease'}}>
+          <div className="grid-view scroll-wrap" inert={state.settingsOpen?'':undefined} style={{flex:1,overflowY:'auto',paddingLeft:calOpen&&isWide?300:0,paddingRight:panelOpen&&isWide?340:0,transition:'padding .2s ease'}}>
             {yearEvents.length===0?emptyState:(
               <>
                 <GridHalf half={1} year={state.year} {...sharedProps} className="stacked-h1" isLight={state.theme==='light'}/>
