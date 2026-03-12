@@ -1137,14 +1137,14 @@ function SettingsModal({trains,cfg,year,onTrainsChange,onCfgChange,onGenerate,on
                 Days before this date will be auto-marked as Zone Hors PI (Buffer).
               </div>
               <label style={lbl}>Year-end freeze start (Zone Hors PI)</label>
-              <input type="text" placeholder="12-15" value={cfg.freezeDate||'12-15'} onChange={e=>onCfgChange({freezeDate:e.target.value})} style={fld}/>
+              <input type="date" value={`${year}-${cfg.freezeDate||'12-15'}`} onChange={e=>onCfgChange({freezeDate:e.target.value.slice(5)})} style={fld}/>
               <div style={{fontSize:'0.62rem',color:T.text2,marginTop:-6,marginBottom:4}}>
-                Format: MM-DD (e.g. 12-15 for Dec 15).
+                Freeze begins this date each year (always in December).
               </div>
               <label style={lbl}>Year-end freeze end (in January next year)</label>
-              <input type="text" placeholder="01-07" value={cfg.freezeEndDate||'01-07'} onChange={e=>onCfgChange({freezeEndDate:e.target.value})} style={fld}/>
+              <input type="date" value={`${(cfg.freezeEndDate||'01-07')==='12-31'?year:year+1}-${cfg.freezeEndDate||'01-07'}`} onChange={e=>onCfgChange({freezeEndDate:e.target.value.slice(5)})} style={fld}/>
               <div style={{fontSize:'0.62rem',color:T.text2,marginTop:-6,marginBottom:4}}>
-                Format: MM-DD (e.g. 01-07 for Jan 7 of next year, or 12-31 to stay in current year).
+                Freeze ends this date (use Jan date for cross-year freeze, or Dec 31 to end within the year).
               </div>
             </div>
           )}
