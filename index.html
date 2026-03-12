@@ -52,6 +52,18 @@
     @keyframes fadeIn       { from{opacity:0} to{opacity:1} }
     @keyframes slideUp      { from{transform:translateY(8px);opacity:0} to{transform:translateY(0);opacity:1} }
     @keyframes pulse        { 0%,100%{opacity:1} 50%{opacity:.4} }
+    /* Horizontal scroll shadow indicators */
+    .scroll-wrap {
+      background-image:
+        linear-gradient(to right, var(--bg) 20px, transparent 20px),
+        linear-gradient(to left,  var(--bg) 20px, transparent 20px),
+        linear-gradient(to right, rgba(0,0,0,.18) 0px, transparent 18px),
+        linear-gradient(to left,  rgba(0,0,0,.18) 0px, transparent 18px);
+      background-position: left center, right center, left center, right center;
+      background-repeat: no-repeat;
+      background-size: 40px 100%, 40px 100%, 20px 100%, 20px 100%;
+      background-attachment: local, local, scroll, scroll;
+    }
     @media print {
       * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
       body { background:#fff !important; color:#000 !important; overflow:visible !important; }
@@ -649,8 +661,8 @@ function GridTrainRow({train, events, weeks, totalW, selectedId, onSelect, onLan
     return(
       <div style={{position:'absolute',left:LABEL_W+hw*WEEK_W+1,top:4,
         width:Math.max(WEEK_W-2,durW*WEEK_W-2),height:ROW_H-8,
-        background:`${color}25`,border:`2px dashed ${color}`,borderRadius:'0 5px 5px 0',
-        pointerEvents:'none',zIndex:10}}/>
+        background:`${color}40`,border:`2px dashed ${color}`,borderRadius:'0 5px 5px 0',
+        pointerEvents:'none',zIndex:10,boxShadow:`0 0 8px ${color}30`}}/>
     );
   })():null;
   return(
@@ -700,6 +712,7 @@ function GridTrainRow({train, events, weeks, totalW, selectedId, onSelect, onLan
               opacity:isDragging?0.35:1,
               transition:isDragging?'none':'background .1s',
             }}>
+            {isHov&&!drag&&<span style={{position:'absolute',left:0,top:0,bottom:0,width:7,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.5rem',color:`${color}70`,letterSpacing:'-1px',userSelect:'none'}}>⠿</span>}
             <span style={{fontSize:'0.64rem',fontWeight:'700',color,whiteSpace:'normal',wordBreak:'break-word',lineHeight:1.25,overflow:'hidden'}}>{evt.label}</span>
             {width>80&&<span style={{fontSize:'0.53rem',color:`${color}90`,fontFamily:"'JetBrains Mono',monospace",marginTop:1,whiteSpace:'nowrap'}}>{fmtMD(evt.start)}</span>}
           </div>
@@ -822,8 +835,8 @@ function GridHalf({half, year, allEvents, calEvents, trains, selectedId, onSelec
           const inView=today>=toISO(viewStart)&&today<=toISO(viewEnd);
           if(!inView) return null;
           return(
-            <div style={{position:'absolute',left:x,top:0,bottom:0,width:2,background:T.red,opacity:.7,zIndex:10,pointerEvents:'none'}}>
-              <div style={{position:'sticky',top:0,background:T.red,color:'#fff',fontSize:'0.48rem',fontWeight:'700',padding:'1px 3px',borderRadius:'0 2px 2px 0',whiteSpace:'nowrap',lineHeight:1.4}}>TODAY</div>
+            <div style={{position:'absolute',left:x,top:0,bottom:0,width:2,background:T.red,opacity:1,zIndex:10,pointerEvents:'none',boxShadow:`0 0 6px ${T.red}60`}}>
+              <div style={{position:'sticky',top:0,background:T.red,color:'#fff',fontSize:'0.52rem',fontWeight:'800',padding:'2px 5px',borderRadius:'0 3px 3px 0',whiteSpace:'nowrap',lineHeight:1.4,letterSpacing:'0.05em'}}>TODAY</div>
             </div>
           );
         })()}
@@ -1056,8 +1069,8 @@ function SettingsModal({trains,cfg,year,onTrainsChange,onCfgChange,onGenerate,on
           <div style={{marginBottom:18}}>
             <div style={{fontSize:'0.66rem',fontWeight:'700',color:T.text3,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:8}}>Mode</div>
             <div style={{display:'flex',gap:4,background:T.inputBg,border:`1px solid ${T.border}`,borderRadius:8,padding:4}}>
-              <button style={tab(mode==='autofit')} onClick={()=>setMode('autofit')}>📅 Auto-fit to Year</button>
-              <button style={tab(mode==='manual')}  onClick={()=>setMode('manual')}>⚙ Manual</button>
+              <button style={tab(mode==='autofit')} onClick={()=>setMode('autofit')} title="Automatically fits all 4 PIs into the selected year, week-aligned, with freeze periods at year start/end">📅 Auto-fit to Year</button>
+              <button style={tab(mode==='manual')}  onClick={()=>setMode('manual')} title="Manually set a start date and number of PIs">⚙ Manual</button>
             </div>
           </div>
           {/* Trains */}
@@ -1187,13 +1200,15 @@ function PrintLegend({trains}){
 }
 
 // ── TOAST ─────────────────────────────────────────────────────────────────────
-function Toast({msg,type='success',onDone}){
+function Toast({msg,type='success',onDone,onUndo}){
   const T=useT();
-  useEffect(()=>{const t=setTimeout(onDone,2200);return()=>clearTimeout(t);},[]);
+  const delay=onUndo?4500:2200;
+  useEffect(()=>{const t=setTimeout(onDone,delay);return()=>clearTimeout(t);},[]);
   const c=type==='success'?{bg:`${T.green}15`,border:`${T.green}40`,text:T.green}:{bg:`${T.red}15`,border:`${T.red}40`,text:T.red};
   return(
     <div className="no-print" style={{position:'fixed',bottom:24,left:'50%',transform:'translateX(-50%)',zIndex:100,background:c.bg,border:`1px solid ${c.border}`,borderRadius:10,padding:'10px 20px',display:'flex',alignItems:'center',gap:8,fontSize:'0.8rem',fontWeight:'600',color:c.text,boxShadow:'0 8px 24px rgba(0,0,0,.4)',animation:'slideUp .2s ease',whiteSpace:'nowrap'}}>
       {type==='success'?'✓':'✕'} {msg}
+      {onUndo&&<button onClick={()=>{onUndo();onDone();}} style={{marginLeft:6,padding:'2px 10px',background:'transparent',border:`1px solid ${c.text}60`,borderRadius:6,color:c.text,fontSize:'0.74rem',fontWeight:'700',cursor:'pointer',fontFamily:'inherit'}}>Undo</button>}
     </div>
   );
 }
@@ -1210,11 +1225,11 @@ function TopBar({state,dispatch,years,onAddEvent,onExport,onExportJSON,onImportJ
         <span style={{fontSize:'0.58rem',color:T.text3}}>v3</span>
       </div>
       <div style={{width:1,height:18,background:T.border}}/>
-      <button onClick={()=>dispatch({type:'SET_YEAR',payload:state.year-1})} style={{...btn,padding:'4px 7px'}}>‹</button>
+      <button onClick={()=>dispatch({type:'SET_YEAR',payload:state.year-1})} style={{...btn,padding:'4px 7px'}} title="Previous year">‹</button>
       <select value={state.year} onChange={e=>dispatch({type:'SET_YEAR',payload:parseInt(e.target.value)})} style={{background:T.btnBg,border:`1px solid ${T.border}`,borderRadius:7,padding:'4px 9px',color:T.text,fontSize:'0.8rem',fontWeight:'700',outline:'none'}}>
         {years.map(y=><option key={y} value={y}>{y}</option>)}
       </select>
-      <button onClick={()=>dispatch({type:'SET_YEAR',payload:state.year+1})} style={{...btn,padding:'4px 7px'}}>›</button>
+      <button onClick={()=>dispatch({type:'SET_YEAR',payload:state.year+1})} style={{...btn,padding:'4px 7px'}} title="Next year">›</button>
       <div style={{width:1,height:18,background:T.border}}/>
       {state.trains.map(t=>(
         <div key={t.id} style={{display:'flex',alignItems:'center',gap:5}}>
@@ -1225,7 +1240,7 @@ function TopBar({state,dispatch,years,onAddEvent,onExport,onExportJSON,onImportJ
       {state.events.length>0&&<div style={{background:T.surface2,border:`1px solid ${T.border}`,borderRadius:20,padding:'2px 8px',fontSize:'0.6rem',color:T.text2}}>{state.events.length}</div>}
       <div style={{flex:1}}/>
       <div style={{width:1,height:18,background:T.border}}/>
-      <button onClick={onAddEvent} style={{...btn,color:T.accent,borderColor:`${T.accent}50`}}>+ Event</button>
+      <button onClick={onAddEvent} style={{...btn,color:T.accent,borderColor:`${T.accent}50`}} title="Add a new PI event">+ Event</button>
       <button onClick={()=>dispatch({type:'CAL_PANEL',payload:!state.calPanelOpen})}
         style={{...btn,color:state.calPanelOpen?T.text:'#6366F1',borderColor:state.calPanelOpen?'#6366F1':T.border,background:state.calPanelOpen?'#1A1A3E':T.btnBg,position:'relative'}}>
         📅 Cal
@@ -1236,7 +1251,7 @@ function TopBar({state,dispatch,years,onAddEvent,onExport,onExportJSON,onImportJ
       <button onClick={onImportJSON} style={{...btn,color:T.green,borderColor:`${T.green}50`}} title="Import calendar from JSON file">↑ JSON</button>
       <button onClick={onExport} style={btn} title="Export current view as PNG">↓ PNG</button>
       <div style={{width:1,height:18,background:T.border}}/>
-      <button onClick={()=>dispatch({type:'SETTINGS',payload:true})} style={btn}>⚙ Config</button>
+      <button onClick={()=>dispatch({type:'SETTINGS',payload:true})} style={btn} title="Open PI generator settings">⚙ Config</button>
       <button onClick={onToggleTheme} style={{...btn,padding:'5px 8px',fontSize:'0.85rem'}} title="Toggle theme">
         {state.theme==='dark'?'☀️':'🌙'}
       </button>
@@ -1275,7 +1290,14 @@ function App(){
     else dispatch({type:'SELECT',payload:id});
   },[]);
   const handleSave=useCallback(evt=>{dispatch({type:'UPSERT_EVENT',payload:evt});setToast(editing?.isNew?'Event added':'Changes saved');setEditing(null);},[editing]);
-  const handleDelete=useCallback(id=>{dispatch({type:'DELETE_EVENT',payload:id});setToast('Event deleted');setEditing(null);},[]);
+  const lastDeletedRef=React.useRef(null);
+  const handleDelete=useCallback(id=>{
+    const evt=state.events.find(e=>e.id===id);
+    lastDeletedRef.current=evt||null;
+    dispatch({type:'DELETE_EVENT',payload:id});
+    setToast({msg:'Event deleted',type:'error',onUndo:()=>{if(lastDeletedRef.current)dispatch({type:'UPSERT_EVENT',payload:lastDeletedRef.current});}});
+    setEditing(null);
+  },[state.events]);
   const handleExportJSON=useCallback(()=>{
     const data={trains:state.trains,events:state.events,calEvents:state.calEvents,cfg:state.cfg,year:state.year,theme:state.theme};
     const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
@@ -1406,7 +1428,7 @@ function App(){
           onReset={()=>{dispatch({type:'RESET_EVENTS'});setToast('All PI events cleared');}}
           onClose={()=>dispatch({type:'SETTINGS',payload:false})}/>}
 
-{toast&&<Toast msg={toast} onDone={()=>setToast(null)}/>}
+{toast&&<Toast msg={typeof toast==='string'?toast:toast.msg} type={typeof toast==='object'?toast.type:'success'} onUndo={typeof toast==='object'?toast.onUndo:undefined} onDone={()=>setToast(null)}/>}
       </div>
     </ThemeCtx.Provider>
   );
