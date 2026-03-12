@@ -483,7 +483,7 @@ function HackRow({events,viewStart,totalW,onSelect,selectedId,dayW=DAY_W}){
         return(
           <div key={hk.id} onClick={e=>{e.stopPropagation();onSelect(hk.id);}}
             style={{position:'absolute',left:left+1,top:3,width,height:HACK_H-6,background:'linear-gradient(90deg,#78350F,#92400E)',border:`1px solid ${isSel?'#F59E0B80':'#78350F'}`,borderRadius:4,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',zIndex:2,boxShadow:isSel?'0 0 0 2px #F59E0B50':'none'}}>
-            <span style={{fontSize:'0.54rem',fontWeight:'800',color:'#FEF3C7',letterSpacing:'0.14em'}}>HACKATHON</span>
+            <span style={{fontSize:'0.54rem',fontWeight:'800',color:'#FEF3C7',letterSpacing:'0.14em'}}>{hk.label||'HACKATHON'}</span>
           </div>
         );
       })}
@@ -768,7 +768,7 @@ function GridHackRow({events, weeks, totalW, selectedId, onSelect, drag, onDragS
               opacity:isDragging?0.35:1,userSelect:'none',
               boxShadow:isSel?'0 0 0 2px #F59E0B50':isHov?'0 2px 8px #78350F60':'none'}}>
             {isHov&&!drag&&<span style={{position:'absolute',left:2,fontSize:'0.5rem',color:'#FEF3C790',userSelect:'none'}}>⠿</span>}
-            <span style={{fontSize:'0.54rem',fontWeight:'800',color:'#FEF3C7',letterSpacing:'0.14em'}}>HACKATHON</span>
+            <span style={{fontSize:'0.54rem',fontWeight:'800',color:'#FEF3C7',letterSpacing:'0.14em'}}>{hk.label||'HACKATHON'}</span>
           </div>
         );
       })}
