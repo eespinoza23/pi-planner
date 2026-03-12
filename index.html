@@ -1264,7 +1264,14 @@ function TopBar({state,dispatch,years,onAddEvent,onExport,onExportJSON,onImportJ
       {state.trains.map(t=>(
         <div key={t.id} style={{display:'flex',alignItems:'center',gap:5}}>
           <div style={{width:7,height:7,borderRadius:'50%',background:t.color,boxShadow:`0 0 5px ${t.color}80`}}/>
-          <span style={{fontSize:'0.68rem',fontWeight:'600',color:T.text2}}>{t.name}</span>
+          <input
+            value={t.name}
+            onChange={e=>dispatch({type:'SET_TRAINS',payload:state.trains.map(tr=>tr.id===t.id?{...tr,name:e.target.value}:tr)})}
+            title="Click to rename this ART"
+            style={{fontSize:'0.68rem',fontWeight:'600',color:T.text2,background:'transparent',border:'none',outline:'none',width:`${Math.max(4,t.name.length)}ch`,cursor:'text',fontFamily:'inherit',padding:0}}
+            onFocus={e=>e.target.style.borderBottom=`1px solid ${t.color}`}
+            onBlur={e=>e.target.style.borderBottom='none'}
+          />
         </div>
       ))}
       {state.events.length>0&&<div style={{background:T.surface2,border:`1px solid ${T.border}`,borderRadius:20,padding:'2px 8px',fontSize:'0.6rem',color:T.text2}}>{state.events.length}</div>}
