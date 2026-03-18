@@ -206,22 +206,28 @@ const CA_HOLIDAYS_2026=[
 
 // ── GENERATORS ───────────────────────────────────────────────────────────────
 function genPI(piNum, trainId, startISO, cfg={}){
-  const {ppGapDays=7, isSecond=false, year=2026} = cfg;
+  const {ppGapDays=7, isSecond=false, year=2026, itersPerPI=5} = cfg;
   const evts=[];
-  const base = isSecond ? addDays(fromISO(startISO), ppGapDays) : fromISO(startISO);
-  const ps=nextTuesday(base), pe=addDays(ps,1), pk=`Q${piNum}`;
-  const piLabel=`PI ${year}.${piNum}`;
-  evts.push({id:uid(),trainId,type:'pp',pi:pk,label:`${piLabel} PI Planning`,start:toISO(ps),end:toISO(pe)});
-  let is=addBizDays(pe,1);
-  const numIters = cfg.itersPerPI || 5;
+  // Snap a date string to the nearest Monday on or after it
+  const snapMon=(iso)=>{ const d=fromISO(iso),w=d.getDay(); return w===1?iso:toISO(addDays(d,w===0?1:8-w)); };
+  const addWks=(iso,n)=>toISO(addDays(fromISO(iso),n*7));
+  const baseISO = isSecond ? toISO(addDays(fromISO(startISO), ppGapDays)) : startISO;
+  const ppMon = snapMon(baseISO);
+  const pk=`Q${piNum}`, piLabel=`PI ${year}.${piNum}`;
+  // PP: 1 week Mon–Sun
+  evts.push({id:uid(),trainId,type:'pp',pi:pk,label:`${piLabel} PI Planning`,
+             start:ppMon, end:toISO(addDays(fromISO(ppMon),6))});
+  // Iterations: 2 weeks each (Mon–Sun), start the week after PP
+  let cur=addWks(ppMon,1);
+  const numIters=Math.max(1,itersPerPI||5);
   for(let i=1;i<=numIters;i++){
-    const ie=addBizDays(is,9);
-    evts.push({id:uid(),trainId,type:'iter',pi:pk,label:String(i),start:toISO(is),end:toISO(ie)});
-    is=addBizDays(ie,1);
+    evts.push({id:uid(),trainId,type:'iter',pi:pk,label:String(i),
+               start:cur, end:toISO(addDays(fromISO(cur),13))});
+    cur=addWks(cur,2);
   }
-  // IP Iteration
-  const ie=addBizDays(is,9);
-  evts.push({id:uid(),trainId,type:'innov',pi:pk,label:`${piLabel} Innovation`,start:toISO(is),end:toISO(ie)});
+  // Innovation: 1 week Mon–Sun, immediately after last iteration
+  evts.push({id:uid(),trainId,type:'innov',pi:pk,label:`${piLabel} Innovation`,
+             start:cur, end:toISO(addDays(fromISO(cur),6))});
   return evts;
 }
 
@@ -244,7 +250,7 @@ function generateAll(trains, cfg){
     const i3=(cfg.ppOrder==='B_first'?eB:eA).find(e=>e.type==='iter'&&e.label==='3');
     if(i3) all.push({id:uid(),trainId:'both',type:'hack',pi:pk,label:'Hackathon',start:i3.start,end:toISO(addBizDays(fromISO(i3.start),4))});
     const last=evtSet.reduce((mx,e)=>e.end>mx?e.end:mx,'');
-    cur=toISO(addBizDays(fromISO(last),1));
+    cur=toISO(addDays(fromISO(last),1));
   }
   return all;
 }
